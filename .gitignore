@@ -1,0 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data files (Too large for Git — download from UCI: doi:10.24432/C54606)
+data/SUSY.csv
+data/*.csv
+SUSY.csv
+*.csv
+
+# Output logs
+*.log
+evaluation_summary.txt
+results.txt
+
+# Virtual Environments
+venv/
+env/
+.env
+.venv/
