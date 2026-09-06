@@ -1,4 +1,4 @@
-﻿"""
+"""
 Pipeline thực thi và đánh giá mô hình Histogram Gradient Boosting (HGB)
 trên tập dữ liệu va chạm hạt SUSY (UCI Benchmark).
 Triển khai 100% bằng Python thuần và NumPy -- Không phụ thuộc Scikit-Learn.
@@ -104,9 +104,12 @@ def main():
     # ------------------------------------------------------------------
     data_dir  = os.path.dirname(os.path.abspath(__file__))
     data_path = os.path.join(data_dir, "data", "SUSY.csv")
-
     if not os.path.exists(data_path):
-        sys.exit(f"[!] File not found: {data_path}")
+        alt_path = os.path.join(data_dir, "SUSY.csv")
+        if os.path.exists(alt_path):
+            data_path = alt_path
+        else:
+            sys.exit(f"[!] File not found: {data_path} or {alt_path}")
 
     nrows = None if (args.nrows is None or args.nrows <= 0) else args.nrows
     nrows_str = "ALL 5,000,000" if nrows is None else f"{nrows:,}"
@@ -325,7 +328,7 @@ def main():
         f.write("=" * 70 + "\n")
         f.write("  HGB EVALUATION REPORT -- SUSY DATASET\n")
         f.write("=" * 70 + "\n\n")
-        f.write(f"Data    : SUSY.csv  {args.nrows:,} rows  "
+        f.write(f"Data    : SUSY.csv  {nrows_str} rows  "
                 f"Train={X_train.shape[0]:,}  Test={X_test.shape[0]:,}\n")
         f.write(f"Model   : Histogram Gradient Boosting (Zero Scikit-Learn)\n")
         f.write(f"Seed    : {args.random_state}\n\n")

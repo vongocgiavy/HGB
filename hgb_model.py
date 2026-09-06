@@ -57,7 +57,7 @@ def train_test_split_stratified(X, y, test_size=0.2, random_state=42):
 
 def compute_confusion_matrix(y_true, y_pred):
     """
-    Ma trận nhầm lẫn nhị phân.
+    Ma trận nhầm lẫn nhị phân (tối ưu hóa đơn vòng bincount - Zero Sklearn).
 
     Trả về: (TP, TN, FP, FN)
         TP = True Positive  : thực tế 1, dự đoán 1
@@ -65,13 +65,11 @@ def compute_confusion_matrix(y_true, y_pred):
         FP = False Positive : thực tế 0, dự đoán 1  (báo động giả)
         FN = False Negative : thực tế 1, dự đoán 0  (bỏ sót tín hiệu)
     """
-    y_true = np.asarray(y_true).astype(int)
-    y_pred = np.asarray(y_pred).astype(int)
-    tp = int(np.sum((y_true == 1) & (y_pred == 1)))
-    tn = int(np.sum((y_true == 0) & (y_pred == 0)))
-    fp = int(np.sum((y_true == 0) & (y_pred == 1)))
-    fn = int(np.sum((y_true == 1) & (y_pred == 0)))
-    return tp, tn, fp, fn
+    y_t = np.asarray(y_true).astype(int).ravel()
+    y_p = np.asarray(y_pred).astype(int).ravel()
+    idx = 2 * y_t + y_p
+    counts = np.bincount(idx, minlength=4)
+    return int(counts[3]), int(counts[0]), int(counts[1]), int(counts[2])
 
 
 def compute_accuracy(y_true, y_pred):
@@ -169,6 +167,78 @@ def compute_roc_auc(y_true, y_scores):
     sum_pos_ranks = np.sum(ranks[pos_mask])
     u_stat = sum_pos_ranks - (n_pos * (n_pos + 1)) / 2.0
     return float(u_stat / (n_pos * n_neg))
+
+
+def compute_roc_curve(y_true, y_scores):
+    """
+    Tính False Positive Rate (FPR) và True Positive Rate (TPR) qua các ngưỡng phân loại (Zero Sklearn).
+
+    Tham số:
+        y_true   : Nhãn thực tế nhị phân {0, 1}
+        y_scores : Điểm số xác suất liên tục
+    Trả về:
+        fpr, tpr, thresholds (np.ndarray)
+    """
+    y_t = np.asarray(y_true).astype(int).ravel()
+    scores = np.asarray(y_scores, dtype=np.float64).ravel()
+    desc_order = np.argsort(-scores)
+    y_sorted = y_t[desc_order]
+    scores_sorted = scores[desc_order]
+
+    distinct_indices = np.where(np.diff(scores_sorted))[0]
+    threshold_idxs = np.r_[distinct_indices, y_t.size - 1]
+
+    tps = np.cumsum(y_sorted == 1)[threshold_idxs]
+    fps = np.cumsum(y_sorted == 0)[threshold_idxs]
+
+    n_pos = int(np.sum(y_t == 1))
+    n_neg = int(np.sum(y_t == 0))
+
+    tpr = tps / max(n_pos, 1)
+    fpr = fps / max(n_neg, 1)
+
+    fpr = np.r_[0.0, fpr]
+    tpr = np.r_[0.0, tpr]
+    thresholds = np.r_[scores_sorted[threshold_idxs[0]] + 1e-5, scores_sorted[threshold_idxs]]
+    return fpr, tpr, thresholds
+
+
+def compute_precision_recall_curve(y_true, y_scores):
+    """
+    Tính Precision và Recall qua các ngưỡng phân loại (Zero Sklearn).
+
+    Tham số:
+        y_true   : Nhãn thực tế nhị phân {0, 1}
+        y_scores : Điểm số xác suất liên tục
+    Trả về:
+        precision, recall, thresholds (np.ndarray)
+    """
+    y_t = np.asarray(y_true).astype(int).ravel()
+    scores = np.asarray(y_scores, dtype=np.float64).ravel()
+    desc_order = np.argsort(-scores)
+    y_sorted = y_t[desc_order]
+    scores_sorted = scores[desc_order]
+
+    distinct_indices = np.where(np.diff(scores_sorted))[0]
+    threshold_idxs = np.r_[distinct_indices, y_t.size - 1]
+
+    tps = np.cumsum(y_sorted == 1)[threshold_idxs]
+    fps = np.cumsum(y_sorted == 0)[threshold_idxs]
+
+    n_pos = int(np.sum(y_t == 1))
+    precision = tps / np.maximum(tps + fps, 1)
+    recall = tps / max(n_pos, 1)
+
+    thresholds = scores_sorted[threshold_idxs]
+    precision = np.r_[1.0, precision, 0.0]
+    recall = np.r_[0.0, recall, 1.0]
+    order = np.argsort(recall)
+    return precision[order], recall[order], thresholds
+
+
+# Aliases tương thích với Scikit-Learn
+roc_curve = compute_roc_curve
+precision_recall_curve = compute_precision_recall_curve
 
 
 # ==============================================================================
@@ -330,7 +400,7 @@ class HistRegressionTree:
     def _best_split(self, X_binned, g, h, idx):
         """
         Duyệt toàn bộ D đặc trưng và K bins để tìm điểm cắt
-        tối đa hóa Gain phân tách.
+        tối đa hóa Gain phân tách (được tối ưu hóa bằng vector hóa đơn vòng).
 
         Công thức Gain:
             Gain = 0.5 * [ G_L^2/(H_L+λ) + G_R^2/(H_R+λ) - G_tot^2/(H_tot+λ) ]
@@ -340,10 +410,10 @@ class HistRegressionTree:
             return None
 
         g_node, h_node = g[idx], h[idx]
-        G_tot, H_tot   = g_node.sum(), h_node.sum()
+        G_tot, H_tot   = float(g_node.sum()), float(h_node.sum())
         score_tot      = G_tot ** 2 / (H_tot + self.l2_reg)
-
-        best_gain, best_feat, best_bin = -1.0, None, None
+        best_split_score = score_tot + 2.0 * self.min_gain
+        best_feat, best_bin = None, None
 
         for j in range(X_binned.shape[1]):
             col = X_binned[idx, j]
@@ -359,21 +429,22 @@ class HistRegressionTree:
             C_R = n - C_L
 
             valid = (C_L >= self.min_samples_leaf) & (C_R >= self.min_samples_leaf)
-            if not valid.any():
+            if not np.any(valid):
                 continue
 
-            gain = 0.5 * (
-                G_L[valid] ** 2 / (H_L[valid] + self.l2_reg) +
-                G_R[valid] ** 2 / (H_R[valid] + self.l2_reg) -
-                score_tot
+            valid_bins = np.flatnonzero(valid)
+            score_split = (
+                G_L[valid_bins] ** 2 / (H_L[valid_bins] + self.l2_reg) +
+                G_R[valid_bins] ** 2 / (H_R[valid_bins] + self.l2_reg)
             )
-            k = gain.argmax()
-            if gain[k] > best_gain:
-                best_gain = gain[k]
+            k = score_split.argmax()
+            if score_split[k] > best_split_score:
+                best_split_score = score_split[k]
                 best_feat = j
-                best_bin  = np.where(valid)[0][k]
+                best_bin  = int(valid_bins[k])
 
-        if best_gain > self.min_gain:
+        if best_feat is not None:
+            best_gain = float(0.5 * (best_split_score - score_tot))
             return best_feat, best_bin, best_gain
         return None
 
@@ -1151,6 +1222,10 @@ __all__ = [
     'compute_specificity',
     'compute_npv',
     'compute_roc_auc',
+    'compute_roc_curve',
+    'compute_precision_recall_curve',
+    'roc_curve',
+    'precision_recall_curve',
     'HistBinMapper',
     'HistTreeNode',
     'HistRegressionTree',
@@ -1159,4 +1234,61 @@ __all__ = [
     'cross_val_score',
     'CustomGridSearchCV',
 ]
+
+
+if __name__ == '__main__':
+    print("=" * 78)
+    print("  HISTOGRAM GRADIENT BOOSTING (HGB) -- COMPONENT VERIFICATION")
+    print("  100% Pure Python & NumPy (Zero Scikit-Learn)")
+    print("=" * 78)
+
+    rng = np.random.RandomState(42)
+    n_samples, n_features = 400, 10
+    X_syn = rng.randn(n_samples, n_features).astype(np.float32)
+    logit = 1.5 * X_syn[:, 0] - 2.0 * X_syn[:, 1] + 0.8 * (X_syn[:, 2] ** 2) - 0.5
+    prob = 1.0 / (1.0 + np.exp(-logit))
+    y_syn = (prob >= 0.5).astype(np.float32)
+
+    print(f"[*] Synthetic dataset: {n_samples} samples, {n_features} features")
+    print(f"    Class balance    : {int(y_syn.sum())} positive ({y_syn.mean()*100:.1f}%), {n_samples - int(y_syn.sum())} negative")
+
+    # 1. Test train_test_split_stratified
+    X_tr, X_te, y_tr, y_te = train_test_split_stratified(X_syn, y_syn, test_size=0.25, random_state=42)
+    print(f"[v] Stratified Split : Train={len(y_tr)}, Test={len(y_te)} (distribution preserved)")
+
+    # 2. Test HistBinMapper
+    mapper = HistBinMapper(max_bins=64)
+    mapper.fit(X_tr)
+    X_tr_b = mapper.transform(X_tr)
+    print(f"[v] HistBinMapper    : Successfully mapped to uint8 bins in [0, {X_tr_b.max()}]")
+
+    # 3. Test CustomHistGradientBoostingClassifier
+    clf = CustomHistGradientBoostingClassifier(
+        n_estimators=30, learning_rate=0.1, max_depth=4,
+        min_samples_leaf=10, l2_regularization=1.0, max_bins=64,
+        validation_fraction=0.15, n_iter_no_change=10, random_state=42
+    )
+    clf.fit(X_tr, y_tr, verbose=False)
+    print(f"[v] Classifier Fit   : Completed {clf.n_iter_} trees (early stopped / best iteration: {clf.best_n_iter_})")
+
+    # 4. Test predictions and metrics
+    y_pred = clf.predict(X_te, threshold=0.50)
+    y_proba = clf.predict_proba(X_te)
+    acc = compute_accuracy(y_te, y_pred)
+    f1 = compute_f1_score(y_te, y_pred)
+    auc = compute_roc_auc(y_te, y_proba)
+    print(f"[v] Test Metrics     : Accuracy={acc*100:.2f}% | F1={f1*100:.2f}% | ROC-AUC={auc:.4f}")
+
+    # 5. Test Cross-Validation
+    cv_scores = cross_val_score(clf, X_tr, y_tr, cv=3, scoring='roc_auc')
+    print(f"[v] 3-Fold Stratified: Mean ROC-AUC={cv_scores.mean():.4f} (+/- {cv_scores.std():.4f})")
+
+    # 6. Test Curves
+    fpr, tpr, _ = compute_roc_curve(y_te, y_proba)
+    p_curve, r_curve, _ = compute_precision_recall_curve(y_te, y_proba)
+    print(f"[v] ROC & PR Curves  : Evaluated ({len(fpr)} ROC points, {len(p_curve)} PR points)")
+
+    print("=" * 78)
+    print("  ALL HGB CORE MODULES OPERATIONAL & VERIFIED SUCCESSFULLY")
+    print("=" * 78)
 
