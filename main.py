@@ -111,8 +111,10 @@ def main():
         else:
             sys.exit(f"[!] File not found: {data_path} or {alt_path}")
 
-    nrows = None if (args.nrows is None or args.nrows <= 0) else args.nrows
-    nrows_str = "ALL 5,000,000" if nrows is None else f"{nrows:,}"
+    # Load full dataset (5,000,000 rows) regardless of args.nrows
+    nrows = None
+    nrows_str = "ALL 5,000,000"
+
     print(f"\n[1] Loading {nrows_str} rows from {data_path} ...")
     t_load = time.time()
     df = pd.read_csv(data_path, header=None, nrows=nrows)
@@ -152,6 +154,13 @@ def main():
     unassigned = total_rows - total_assigned
     coverage = (total_assigned / total_rows) * 100 if total_rows > 0 else 0
     print(f"    Dataset accounting: Train+Test={total_assigned:,}, Total={total_rows:,}, Unassigned={unassigned}, Coverage={coverage:.2f}%")
+    # Duplicate overlap check between train and test sets
+    if X_train.shape[0] > 0 and X_test.shape[0] > 0:
+        train_rows = set(map(tuple, X_train))
+        test_rows = set(map(tuple, X_test))
+        overlap = len(train_rows.intersection(test_rows))
+        print(f"[Duplicate Check] Overlap rows between train and test: {overlap}")
+
 
     # ------------------------------------------------------------------
     # 3. Hyperparameters
