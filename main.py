@@ -118,19 +118,19 @@ def main():
     df = pd.read_csv(data_path, header=None, nrows=nrows)
     df.columns = ["label"] + FEATURE_NAMES
     X = df[FEATURE_NAMES].values.astype(np.float32)
-    # Verify total rows used matches expectation (5,000,000 rows)
-    if nrows is None:
-        if X.shape[0] != 5_000_000:
-            print(f"[WARNING] Expected 5,000,000 rows but loaded {X.shape[0]:,} rows.")
-        else:
-            print("[INFO] Successfully loaded all 5,000,000 rows.")
+    y = df["label"].values.astype(np.float32)
+
+    # [1] Verify that all 5,000,000 rows are loaded
+    if X.shape[0] == 5_000_000:
+        print("[INFO] ✔ Using full dataset: 5,000,000 / 5,000,000 samples loaded.")
+    else:
+        print(f"[WARNING] Expected 5,000,000 rows but loaded {X.shape[0]:,} rows.")
 
     # Data quality checks
     dup_count = df.duplicated().sum()
     nan_count = df.isna().sum().sum()
     inf_count = np.isinf(df.select_dtypes(include=[np.number])).sum().sum()
     print(f"    Data quality: {dup_count} duplicate rows, {nan_count} NaNs, {inf_count} Infs")
-    y = df["label"].values.astype(np.float32)
 
     n_pos, n_neg = int((y == 1).sum()), int((y == 0).sum())
     print(f"    Read time : {t_load:.2f}s")
@@ -275,11 +275,16 @@ def main():
     # ------------------------------------------------------------------
     # 7. Threshold sweep
     # ------------------------------------------------------------------
-    # Threshold sweep now performed on test set (validation data not stored separately)
-    X_thr = X_test
-    y_thr = y_test
-    thr_set = "test"
-
+    # Threshold sweep now performed on validation set if available; otherwise fallback to test set
+    if hasattr(model, "X_val_") and hasattr(model, "y_val_"):
+        X_thr = model.X_val_
+        y_thr = model.y_val_
+        thr_set = "validation"
+    else:
+        X_thr = X_test
+        y_thr = y_test
+        thr_set = "test"
+    
     y_proba_thr = model.predict_proba(X_thr)
     print(f"\n[5] Threshold sweep on {thr_set} set (threshold = {args.threshold:.2f}) ...")
     sweep_results = {}
@@ -343,8 +348,11 @@ def main():
         n_combos = len(gs.cv_results_.get('params', []))
         t_refit = getattr(model, "fit_time_", t_refit)
         print(f"  Che do huan luyen         : Grid Search ({n_combos} to hop x {args.cv_folds} folds) + Refit")
-        # Ensure binning is fit only on training subset to avoid leakage (already handled in model fit)
-        print(f"[*] ROI binning {args.max_bins} bins on {X_train.shape[0]:,} training samples (no leakage).")
+        # Data Leakage Audit: confirm binning was fit only on training data
+        if hasattr(model, "bins_fitted_on"):
+            print(f"[Leakage Audit] Binning fitted on: {model.bins_fitted_on}")
+        else:
+            print("[Leakage Audit] No explicit binning source attribute; ensure training data only used.")
         print(f"  Trees built (stopped at)  : {stopped}")
         print(f"  Best iteration (pruned to): {model.best_n_iter_}")
         print(f"  Best val loss             : {model.best_val_loss_:.5f}")
