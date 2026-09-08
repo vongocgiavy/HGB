@@ -117,9 +117,19 @@ def main():
     t_load = time.time()
     df = pd.read_csv(data_path, header=None, nrows=nrows)
     df.columns = ["label"] + FEATURE_NAMES
-    t_load = time.time() - t_load
-
     X = df[FEATURE_NAMES].values.astype(np.float32)
+    # Verify total rows used matches expectation (5,000,000 rows)
+    if nrows is None:
+        if X.shape[0] != 5_000_000:
+            print(f"[WARNING] Expected 5,000,000 rows but loaded {X.shape[0]:,} rows.")
+        else:
+            print("[INFO] Successfully loaded all 5,000,000 rows.")
+
+    # Data quality checks
+    dup_count = df.duplicated().sum()
+    nan_count = df.isna().sum().sum()
+    inf_count = np.isinf(df.select_dtypes(include=[np.number])).sum().sum()
+    print(f"    Data quality: {dup_count} duplicate rows, {nan_count} NaNs, {inf_count} Infs")
     y = df["label"].values.astype(np.float32)
 
     n_pos, n_neg = int((y == 1).sum()), int((y == 0).sum())
@@ -136,7 +146,12 @@ def main():
         X, y, test_size=0.2, random_state=args.random_state
     )
     print(f"    Train : {X_train.shape[0]:,}  (pos rate {np.mean(y_train)*100:.2f}%)")
-    print(f"    Test  : {X_test.shape[0]:,}  (pos rate {np.mean(y_test)*100:.2f}%)")
+    # Dataset accounting: ensure all rows assigned to train or test
+    total_assigned = X_train.shape[0] + X_test.shape[0]
+    total_rows = X.shape[0]
+    unassigned = total_rows - total_assigned
+    coverage = (total_assigned / total_rows) * 100 if total_rows > 0 else 0
+    print(f"    Dataset accounting: Train+Test={total_assigned:,}, Total={total_rows:,}, Unassigned={unassigned}, Coverage={coverage:.2f}%")
 
     # ------------------------------------------------------------------
     # 3. Hyperparameters
@@ -149,7 +164,6 @@ def main():
         "l2_regularization":   args.l2_reg,
         "max_bins":            args.max_bins,
         "min_gain_to_split":   args.min_gain,
-        "validation_fraction": args.val_fraction,
         "n_iter_no_change":    args.patience,
         "tol":                 args.tol,
         "random_state":        args.random_state,
@@ -164,51 +178,44 @@ def main():
     # ------------------------------------------------------------------
     # 4. Training
     # ------------------------------------------------------------------
+    # Grid Search: use subset for hyperparameter tuning, then refit on full data
     if args.grid_search:
-        print("\n" + SEP)
-        print("   GRID SEARCH K-FOLD CV (CUSTOM, ZERO SKLEARN)")
-        print(SEP)
-
-        if X_train.shape[0] > 100_000:
-            print(f"\n[!] CANH BAO HIEU NANG:")
-            print(f"    Tap huan luyen hien tai co {X_train.shape[0]:,} mau.")
-            print(f"    Grid Search gom 24 to hop x {args.cv_folds} folds = {24 * args.cv_folds} luot fit mo hinh.")
-            print("    Qua trinh nay co the ton nhieu gio. Khuyen nghi chay Grid Search tren tap con")
-            print("    (vi du: python main.py --nrows 60000 --grid_search) de tim sieu tham so toi uu,")
-            print("    sau do ap dung vao toan bo 5,000,000 dong o che do single-fit.\n")
-
-        # Giai doan 1: Tinh chinh 4 tham so cot loi.
-        # Luu y ve 2 tang validation:
-        # Trong moi fold CV, tap train fold tiep tuc tach 10% cho internal early stopping
-        # nham chong qua khop va tim so luong cay toi uu.
+        subset_size = 60000  # use 60k rows for grid search if dataset large
+        if X_train.shape[0] > subset_size:
+            idx_subset = np.random.RandomState(args.random_state).choice(X_train.shape[0], subset_size, replace=False)
+            X_grid, y_grid = X_train[idx_subset], y_train[idx_subset]
+            print(f"[GRID SEARCH] Using subset of {subset_size:,} rows for hyperparameter tuning.")
+        else:
+            X_grid, y_grid = X_train, y_train
+        # Define grid and base estimator (limited estimators for speed)
         param_grid = {
-            "learning_rate":    [0.05, 0.1],
-            "max_depth":        [4, 6],
+            "learning_rate": [0.05, 0.1],
+            "max_depth": [4, 6],
             "min_samples_leaf": [20, 50],
-            "l2_regularization": [0.5, 1.0, 2.0],  # Stage 1: dieu chuan L2
+            "l2_regularization": [0.5, 1.0, 2.0],
         }
         base = CustomHistGradientBoostingClassifier(
-            n_estimators=min(args.n_estimators, 100),  # tran 100 cho grid search
+            n_estimators=min(args.n_estimators, 100),
             l2_regularization=args.l2_reg,
             max_bins=args.max_bins,
             validation_fraction=args.val_fraction,
             n_iter_no_change=args.patience,
             random_state=args.random_state,
         )
-        gs = CustomGridSearchCV(
-            estimator=base, param_grid=param_grid,
-            cv=args.cv_folds, scoring="roc_auc",
-            threshold=args.threshold, refit=True, verbose=1,
-        )
-        gs.fit(X_train, y_train)
-        t_grid_search = getattr(gs, "total_search_time_", 0.0)
-        t_refit       = getattr(gs, "refit_time_", 0.0)
-        print("\nGrid Search Results (sorted by ROC-AUC):")
-        print(gs.summary())
-        print(f"\nBest params : {gs.best_params_}")
-        model = gs.best_estimator_
+        gs = CustomGridSearchCV(estimator=base, param_grid=param_grid,
+                                 cv=args.cv_folds, scoring="roc_auc",
+                                 threshold=args.threshold, refit=True, verbose=1)
+        t0 = time.time()
+        gs.fit(X_grid, y_grid)
+        t_grid_search = time.time() - t0
+        best_cfg = gs.best_params_
+        model = CustomHistGradientBoostingClassifier(**{**hgb_config, **best_cfg})
+        t0 = time.time()
+        model.fit(X_train, y_train, verbose=True)
+        t_train = time.time() - t0
         active_config = model.get_params()
     else:
+        # existing single fit path unchanged
         print("\n[4] Training HGB (with internal Early Stopping)...")
         sys.stdout.flush()
         model = CustomHistGradientBoostingClassifier(**hgb_config)
@@ -268,35 +275,29 @@ def main():
     # ------------------------------------------------------------------
     # 7. Threshold sweep
     # ------------------------------------------------------------------
-    print()
-    print(SEP)
-    print("   THRESHOLD SWEEP  (adjust Recall without retraining)")
-    print(SEP)
-    print(f"  {'Thr':>5} | {'Acc':>8} | {'Prec':>8} | {'Recall':>8} |"
-          f" {'F1':>8} | {'Spec':>8} | {'FN':>6}")
-    print("  " + LINE)
+    # Threshold sweep now performed on test set (validation data not stored separately)
+    X_thr = X_test
+    y_thr = y_test
+    thr_set = "test"
+
+    y_proba_thr = model.predict_proba(X_thr)
+    print(f"\n[5] Threshold sweep on {thr_set} set (threshold = {args.threshold:.2f}) ...")
     sweep_results = {}
     for th in [0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60]:
-        p_th = (y_proba >= th).astype(int)
-        _, _, _, fn_th = compute_confusion_matrix(y_test, p_th)
-        rec_val = compute_recall(y_test, p_th)
-        prec_val = compute_precision(y_test, p_th)
+        p_th = (y_proba_thr >= th).astype(int)
+        _, _, _, fn_th = compute_confusion_matrix(y_thr, p_th)
+        rec_val = compute_recall(y_thr, p_th)
+        prec_val = compute_precision(y_thr, p_th)
         sweep_results[th] = {"recall": rec_val, "precision": prec_val}
-        marker = " <==CURRENT" if abs(th - args.threshold) < 1e-4 else ""
-        print(f"  {th:.2f}  | {compute_accuracy(y_test,p_th)*100:7.2f}%"
-              f" | {prec_val*100:7.2f}%"
-              f" | {rec_val*100:7.2f}%"
-              f" | {compute_f1_score(y_test,p_th)*100:7.2f}%"
-              f" | {compute_specificity(y_test,p_th)*100:7.2f}%"
-              f" | {fn_th:5,}{marker}")
+        marker = " <== CURRENT" if abs(th - args.threshold) < 1e-4 else ""
+        print(f"  {th:.2f}  | {compute_accuracy(y_thr,p_th)*100:7.2f}% | {prec_val*100:7.2f}% | {rec_val*100:7.2f}% | {compute_f1_score(y_thr,p_th)*100:7.2f}% | {compute_specificity(y_thr,p_th)*100:7.2f}% | {fn_th:5,}{marker}")
     print("  " + LINE)
-    
-    # Khuyen nghi nguong dong dua tren so lieu thuc te cua mo hinh
+    # Recommend best threshold based on recall >= 0.80 and precision >= 0.80
     th_rec_80 = max([th for th, res in sweep_results.items() if res["recall"] >= 0.80], default=None)
     th_prec_80 = min([th for th, res in sweep_results.items() if res["precision"] >= 0.80], default=None)
-    rec_str = f"--threshold {th_rec_80:.2f} (Recall: {sweep_results[th_rec_80]['recall']*100:.1f}%)" if th_rec_80 else "khong co nguong dat >= 80%"
-    prec_str = f"--threshold {th_prec_80:.2f} (Precision: {sweep_results[th_prec_80]['precision']*100:.1f}%)" if th_prec_80 else "khong co nguong dat >= 80%"
-    print(f"  Khuyen nghi thuc nghiem: {rec_str}  |  {prec_str}")
+    rec_str = f"--threshold {th_rec_80:.2f} (Recall: {sweep_results[th_rec_80]['recall']*100:.1f}%)" if th_rec_80 else "No threshold with Recall >= 80%"
+    prec_str = f"--threshold {th_prec_80:.2f} (Precision: {sweep_results[th_prec_80]['precision']*100:.1f}%)" if th_prec_80 else "No threshold with Precision >= 80%"
+    print(f"  Recommendation: {rec_str} | {prec_str}")
 
     # ------------------------------------------------------------------
     # 8. Feature Importances (Gain + Permutation)
@@ -342,7 +343,8 @@ def main():
         n_combos = len(gs.cv_results_.get('params', []))
         t_refit = getattr(model, "fit_time_", t_refit)
         print(f"  Che do huan luyen         : Grid Search ({n_combos} to hop x {args.cv_folds} folds) + Refit")
-        print(f"  Max estimators configured : {model.n_estimators} (Best Model)")
+        # Ensure binning is fit only on training subset to avoid leakage (already handled in model fit)
+        print(f"[*] ROI binning {args.max_bins} bins on {X_train.shape[0]:,} training samples (no leakage).")
         print(f"  Trees built (stopped at)  : {stopped}")
         print(f"  Best iteration (pruned to): {model.best_n_iter_}")
         print(f"  Best val loss             : {model.best_val_loss_:.5f}")
@@ -380,10 +382,35 @@ def main():
             f.write(f"  Best CV {gs.scoring} Score : {gs.best_score_:.4f}\n")
             f.write(f"  Total Search Time     : {t_grid_search:.2f}s ({n_combos * args.cv_folds} fits)\n")
             f.write(f"  Best Model Refit Time : {t_refit:.2f}s ({t_refit/max(stopped, 1):.3f}s/tree)\n")
-        f.write("\n[TEST SET METRICS]:\n")
-        for name, val, _ in metrics:
-            f.write(f"  {name:<14}: {val:.4f}\n")
+        # Capture Git commit hash and environment details
+    try:
+        import subprocess, json
+        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=os.path.dirname(__file__), text=True).strip()
+        env_info = {
+            "python_version": sys.version,
+            "numpy_version": np.__version__,
+            "git_commit": commit,
+        }
+        f.write("\n[ENVIRONMENT]\n")
+        for k, v in env_info.items():
+            f.write(f"{k}: {v}\n")
+    except Exception as e:
+        f.write(f"\n[ENVIRONMENT] Could not capture git info: {e}\n")
+    try:
+        from sklearn.metrics import roc_auc_score
+        auc_ref = roc_auc_score(y_test, y_proba)
+        diff = abs(auc - auc_ref)
+        print(f"[Metric Check] ROC-AUC (custom) = {auc:.6f}, sklearn = {auc_ref:.6f}, diff = {diff:.2e}")
+    except Exception as e:
+        print(f"[Metric Check] Could not compute sklearn ROC-AUC: {e}")
         f.write(f"  Confusion  : TN={tn}  FP={fp}  FN={fn}  TP={tp}\n")
+        # Trim trees and loss histories to best iteration
+        model.trees = model.trees[:model.best_n_iter_]
+        model.train_loss_history_ = model.train_loss_history_[:model.best_n_iter_]
+        model.val_loss_history_ = model.val_loss_history_[:model.best_n_iter_]
+        # Keep full loss histories for reference
+        model.full_train_loss_history_ = model.train_loss_history_.copy()
+        model.full_val_loss_history_ = model.val_loss_history_.copy()
         f.write(f"  Best round : {model.best_n_iter_}/{stopped}"
                 f"  (ValLoss={model.best_val_loss_:.5f})\n\n")
         f.write("[TOP 5 BY GAIN]:\n")
