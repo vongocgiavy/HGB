@@ -1,0 +1,38 @@
+{
+  "dataset_total": 1000,
+  "train_size": 800,
+  "test_size": 200,
+  "validation_size": 80,
+  "unassigned_samples": 0,
+  "coverage_percentage": 100.0,
+  "random_state": 42,
+  "best_threshold": 0.5,
+  "best_iteration": 5,
+  "trees_built_phase1": 5,
+  "best_val_loss": 0.5772806406021118,
+  "training_time_dev_sec": 0.03219795227050781,
+  "training_time_final_sec": 0.03206992149353027,
+  "metrics": {
+    "accuracy": 0.755,
+    "precision": 0.8225806451612904,
+    "recall": 0.5730337078651685,
+    "specificity": 0.9009009009009009,
+    "npv": 0.7246376811594203,
+    "f1_score": 0.6754966887417219,
+    "roc_auc": 0.7774066201032493,
+    "fpr": 0.0990990990990991,
+    "fnr": 0.42696629213483145
+  },
+  "confusion_matrix": {
+    "TP": 51,
+    "TN": 100,
+    "FP": 11,
+    "FN": 38
+  },
+  "environment": {
+    "python_version": "3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]",
+    "numpy_version": "2.3.2",
+    "pandas_version": "2.3.1",
+    "git_commit": "56423950a2bc223630e5723811d3c639561d10ef"
+  }
+}

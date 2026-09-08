@@ -1,0 +1,6 @@
+{
+  "python_version": "3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]",
+  "numpy_version": "2.3.2",
+  "pandas_version": "2.3.1",
+  "git_commit": "56423950a2bc223630e5723811d3c639561d10ef"
+}

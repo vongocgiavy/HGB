@@ -2,17 +2,18 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
+.ipynb_checkpoints/
 
 # Data files (Too large for Git — download from UCI: doi:10.24432/C54606)
 data/SUSY.csv
 data/*.csv
 SUSY.csv
 *.csv
+!outputs/*.csv
 
-# Output logs
+# Output logs and temporary files
 *.log
-evaluation_summary.txt
-results.txt
 
 # Virtual Environments
 venv/

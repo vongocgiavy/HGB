@@ -1,0 +1,5 @@
+Metric,Count,Percentage
+True Negative (TN),100,50.0
+False Positive (FP),11,5.5
+False Negative (FN),38,19.0
+True Positive (TP),51,25.5

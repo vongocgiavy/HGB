@@ -1,0 +1,56 @@
+==============================================================================
+  HGB EVALUATION SUMMARY -- SUSY DATASET
+==============================================================================
+
+[DATASET]
+  Total samples           : 1,000
+  Train samples           : 800
+  Internal train samples  : 720
+  Validation samples      : 80
+  Test samples            : 200
+  Unassigned samples      : 0
+  Coverage                : 100.00%
+
+[HYPERPARAMETERS]
+  n_estimators            : 5
+  learning_rate           : 0.1
+  max_depth               : 6
+  min_samples_leaf        : 20
+  l2_regularization       : 1.0
+  max_bins                : 255
+  min_gain_to_split       : 1e-07
+  random_state            : 42
+  Grid Search Best Params : {'learning_rate': 0.1, 'max_depth': 6, 'min_samples_leaf': 20}
+  Best CV ROC-AUC         : 0.8219
+
+[TRAINING]
+  Trees built (Phase 1)   : 5
+  Best iteration          : 5
+  Best validation loss    : 0.57728
+  Phase 1 Dev train time  : 0.03s
+  Phase 2 Final train time: 0.03s (Full 800 samples)
+
+[THRESHOLD]
+  Best threshold          : 0.50
+  Threshold selection     : Validation Set only (Max F1 = 72.73%)
+
+[FINAL TEST METRICS]
+  Accuracy                : 75.50%
+  Precision               : 82.26%
+  Recall                  : 57.30%
+  Specificity             : 90.09%
+  NPV                     : 72.46%
+  F1-Score                : 67.55%
+  ROC-AUC                 : 0.7774
+
+[CONFUSION MATRIX]
+  TN = 100  FP = 11  FN = 38  TP = 51 (Total = 200)
+
+[DATA LEAKAGE AUDIT]
+  Status                  : PASSED (14/14 checks)
+
+[ENVIRONMENT]
+  Python                  : 3.13.5
+  NumPy                   : 2.3.2
+  Pandas                  : 2.3.1
+  Git commit              : 56423950a2bc223630e5723811d3c639561d10ef
