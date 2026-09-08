@@ -556,8 +556,10 @@ class CustomHistGradientBoostingClassifier:
         self.best_n_iter_        = 0
         self.best_val_loss_      = np.inf
         self.feature_importances_ = None
-        self.train_loss_history_ = []
-        self.val_loss_history_   = []
+        self.train_loss_history_       = []
+        self.val_loss_history_         = []
+        self.full_train_loss_history_  = []   # lịch sử đầy đủ đến khi early-stop (trước khi trim)
+        self.full_val_loss_history_    = []   # lịch sử đầy đủ đến khi early-stop (trước khi trim)
 
     def get_params(self, deep=True):
         """Lấy danh sách tham số (tương thích Scikit-Learn GridSearchCV & CustomGridSearchCV)."""
@@ -613,10 +615,13 @@ class CustomHistGradientBoostingClassifier:
 
     # ---------- Tách Validation Set nội bộ ----------
 
-    def _split_validation(self, X_binned, y):
+    def _split_validation(self, X, y):
         """
-        Tách Validation Set phân tầng từ dữ liệu train đã được binned.
-        KHÔNG dùng tập Test → đảm bảo không có data leakage.
+        Tách Validation Set phân tầng từ dữ liệu train RAW (float32 — chưa binned).
+        Hàm trả về chỉ mục để fit() có thể:
+          1. fit bin_mapper CHỈ trên tập train-sub (tránh leakage phân phối).
+          2. transform riêng X_raw_tr và X_raw_val.
+        KHÔNG dùng tập Test ngoài → đảm bảo không có data leakage.
         """
         rng = np.random.RandomState(self.random_state)
         val_idx, tr_idx = [], []
@@ -628,7 +633,7 @@ class CustomHistGradientBoostingClassifier:
             tr_idx.extend(idx[n_val:])
         tr_idx  = np.array(tr_idx)
         val_idx = np.array(val_idx)
-        return X_binned[tr_idx], y[tr_idx], X_binned[val_idx], y[val_idx]
+        return X[tr_idx], y[tr_idx], X[val_idx], y[val_idx]
 
     # ---------- Huấn luyện ----------
 
@@ -638,15 +643,18 @@ class CustomHistGradientBoostingClassifier:
 
         Quy trình:
             1. Kiểm tra tính toàn vẹn dữ liệu (NaN, chiều đặc trưng, nhãn nhị phân).
-            2. bin_mapper.fit(X_train) → rời rạc hóa đặc trưng thành uint8.
-            3. Tách 10% thành Validation Set nội bộ (phân tầng).
-            4. Khởi tạo F_0 = log-odds trên tập train nhỏ.
+            2. Tách 10% thành Validation Set nội bộ RAW (phân tầng) — trước khi binning.
+            3. bin_mapper.fit(X_train_sub) → rời rạc hóa CHỈ trên train-sub (tránh leakage).
+               transform X_train_sub và X_val riêng biệt.
+            4. Khởi tạo F_0 = log-odds trên tập train-sub.
             5. Lặp m = 1..n_estimators:
-               a. Tính g = p - y,  h = p*(1-p)  trên tập train nhỏ.
+               a. Tính g = p - y,  h = p*(1-p)  trên tập train-sub.
                b. Fit HistRegressionTree T_m trên (g, h).
                c. Cập nhật F_train và F_val bằng shrinkage.
                d. Tính Train Loss và Val Loss.
                e. Nếu Val Loss không giảm thêm tol sau n_iter_no_change vòng → dừng.
+            6. Trim self.trees, train_loss_history_, val_loss_history_ về best_n_iter_.
+               Lịch sử đầy đủ được lưu trong full_train/val_loss_history_.
         """
         # Kiểm tra tính hợp lệ của dữ liệu đầu vào
         if hasattr(X, 'values'):
@@ -676,18 +684,22 @@ class CustomHistGradientBoostingClassifier:
         self.best_n_iter_        = 0
         no_improve               = 0
 
-        # Bước 1: Rời rạc hóa (fit TRÊN X_TRAIN - không có X_test)
-        if verbose:
-            print(f"[*] Roi rac hoa {self.max_bins} bins (Quantile Binning)...")
-        self.bin_mapper = HistBinMapper(max_bins=self.max_bins)
-        self.bin_mapper.fit(X)
-        X_binned = self.bin_mapper.transform(X)
-
-        # Bước 2: Tách Validation nội bộ
-        X_tr, y_tr, X_val, y_val = self._split_validation(X_binned, y)
+        # Bước 1: Tách Validation nội bộ TRƯỚC khi rời rạc hóa
+        #   → bin_mapper sẽ chỉ được fit trên X_raw_tr (train-sub),
+        #     không "nhìn thấy" phân phối của X_raw_val.
+        #   → Đảm bảo validation nội bộ hoàn toàn độc lập về preprocessing.
+        X_raw_tr, y_tr, X_raw_val, y_val = self._split_validation(X, y)
         if verbose:
             print(f"[*] Validation noi bo: {len(y_tr):,} train-sub | {len(y_val):,} val "
                   f"(validation_fraction={self.validation_fraction})")
+
+        # Bước 2: Rời rạc hóa — fit CHỈ trên X_raw_tr, transform cả hai tập riêng
+        if verbose:
+            print(f"[*] Roi rac hoa {self.max_bins} bins (Quantile Binning — fit tren train-sub only)...")
+        self.bin_mapper = HistBinMapper(max_bins=self.max_bins)
+        self.bin_mapper.fit(X_raw_tr)
+        X_tr  = self.bin_mapper.transform(X_raw_tr)
+        X_val = self.bin_mapper.transform(X_raw_val)
 
         # Bước 3: Khởi tạo F_0 = log-odds
         y_mean = float(np.clip(np.mean(y_tr), 1e-7, 1.0 - 1e-7))
@@ -758,8 +770,16 @@ class CustomHistGradientBoostingClassifier:
                 break
 
         self.stopped_iter_ = len(self.trees)
+
+        # Lưu toàn bộ lịch sử loss trước khi trim (hữu ích để vẽ biểu đồ quá trình dừng)
+        self.full_train_loss_history_ = list(self.train_loss_history_)
+        self.full_val_loss_history_   = list(self.val_loss_history_)
+
         if self.best_n_iter_ is not None and self.best_n_iter_ > 0:
-            self.trees = self.trees[:self.best_n_iter_]
+            self.trees               = self.trees[:self.best_n_iter_]
+            # Trim loss history để khớp với số cây thực tế — tránh lệch khi vẽ biểu đồ
+            self.train_loss_history_ = self.train_loss_history_[:self.best_n_iter_]
+            self.val_loss_history_   = self.val_loss_history_[:self.best_n_iter_]
         self.n_iter_ = len(self.trees)
         elapsed = time.time() - t0
 

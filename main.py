@@ -168,13 +168,28 @@ def main():
         print("\n" + SEP)
         print("   GRID SEARCH K-FOLD CV (CUSTOM, ZERO SKLEARN)")
         print(SEP)
+
+        # -------------------------------------------------------------------
+        # Staged Hyperparameter Tuning Guide
+        # -------------------------------------------------------------------
+        # Giai doạn 1 (hiện tại): Tuỳ chỉnh 4 tham số cốt lõi.
+        #   Tổng hợp: 2 × 2 × 2 × 3 = 24 tổ hợp × cv_folds fits.
+        #   Thời gian ước lượng (60k rows, 3 folds): ~30-60 phút.
+        #
+        # Để mở rộng sang Giai đoạn 2 (sau khi chốt lại 1-2 giá trị ở trên):
+        #   Thêm vào param_grid:
+        #     "n_estimators":      [100, 200, 300],
+        #     "min_gain_to_split": [0.0, 1e-4, 1e-3],
+        #     "max_bins":          [127, 255],
+        # -------------------------------------------------------------------
         param_grid = {
             "learning_rate":    [0.05, 0.1],
             "max_depth":        [4, 6],
             "min_samples_leaf": [20, 50],
+            "l2_regularization": [0.5, 1.0, 2.0],  # Stage 1: tuần chỉnh điều chuẩn
         }
         base = CustomHistGradientBoostingClassifier(
-            n_estimators=min(args.n_estimators, 80),
+            n_estimators=min(args.n_estimators, 100),  # tăng từ 80 → 100 để early-stop có đủ vong
             l2_regularization=args.l2_reg,
             max_bins=args.max_bins,
             validation_fraction=args.val_fraction,
