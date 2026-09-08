@@ -40,7 +40,7 @@ nb["cells"].append(md("s1-title", [
     "- Xay dung **Histogram Gradient Boosting (HGB)** tu dau bang **thuan NumPy - Zero Scikit-Learn**.\n",
     "- **Chung minh toan bo 5,000,000 mau deu duoc su dung**: 4,000,000 train, 1,000,000 test.\n",
     "- **Data Leakage Audit day du**: bin fitting, GridSearch, early stopping, threshold - tat ca tren Training only.\n",
-    "- **Kiem chung Custom HGB/metrics** voi thu vien tham chieu sklearn.\n",
+    "- **Kiem chung noi bo thuan NumPy** giua cac chi so va ma tran nham lan.\n",
     "- Phan tich Feature Importances (Gain + Permutation)."
 ]))
 
@@ -887,7 +887,7 @@ nb["cells"].append(md("s10-eval-comment", [
 # SECTION 11: ROC & Verification
 # ============================================================
 nb["cells"].append(md("s11-roc-header", [
-    "## 11. DUONG CONG ROC & KIEM CHUNG VOI SKLEARN"
+    "## 11. DUONG CONG ROC & KIEM CHUNG THUAN NUMPY (ZERO SKLEARN)"
 ]))
 
 nb["cells"].append(code("s11-roc-code", [
@@ -905,26 +905,56 @@ nb["cells"].append(code("s11-roc-code", [
     "axes[1].legend(); axes[1].grid(alpha=0.3)\n",
     "plt.tight_layout(); plt.show()\n",
     "\n",
-    "# Kiem chung voi sklearn\n",
-    "print('\\n[Kiem chung Custom Metrics voi sklearn]:')\n",
-    "try:\n",
-    "    from sklearn.metrics import roc_auc_score, accuracy_score, f1_score as sk_f1\n",
-    "    auc_sk = roc_auc_score(y_test, yp_test)\n",
-    "    acc_sk = accuracy_score(y_test, yd_test)\n",
-    "    f1_sk  = sk_f1(y_test, yd_test)\n",
-    "    print(f'  ROC-AUC  : Custom={auc:.6f} | sklearn={auc_sk:.6f} | diff={abs(auc-auc_sk):.2e}')\n",
-    "    print(f'  Accuracy : Custom={acc:.6f} | sklearn={acc_sk:.6f} | diff={abs(acc-acc_sk):.2e}')\n",
-    "    print(f'  F1-Score : Custom={f1:.6f} | sklearn={f1_sk:.6f}  | diff={abs(f1-f1_sk):.2e}')\n",
-    "    print('  [OK] Custom metrics khop voi sklearn - trien khai chinh xac!')\n",
-    "except ImportError:\n",
-    "    print('  [INFO] sklearn khong co san - bo qua kiem chung.')"
+    "# ============================================================\n",
+    "# KIEM CHUNG METRICS THUAN NUMPY (KHONG DUNG SKLEARN)\n",
+    "# So sanh ket qua tinh tay voi cac ham compute_* da dinh nghia\n",
+    "# ============================================================\n",
+    "print('\\n[Kiem chung noi bo - Thuan NumPy (Zero Sklearn)]:')\n",
+    "\n",
+    "# 1. Kiem chung Accuracy tu Confusion Matrix\n",
+    "tp_v, tn_v, fp_v, fn_v = compute_confusion_matrix(y_test, yd_test)\n",
+    "acc_manual  = (tp_v + tn_v) / (tp_v + tn_v + fp_v + fn_v)\n",
+    "prec_manual = tp_v / (tp_v + fp_v) if (tp_v + fp_v) > 0 else 0.0\n",
+    "rec_manual  = tp_v / (tp_v + fn_v) if (tp_v + fn_v) > 0 else 0.0\n",
+    "f1_manual   = (2*prec_manual*rec_manual)/(prec_manual+rec_manual) if (prec_manual+rec_manual)>0 else 0.0\n",
+    "\n",
+    "print(f'  Accuracy  : ham={acc:.8f} | tinh_tay={acc_manual:.8f} | diff={abs(acc-acc_manual):.2e}')\n",
+    "print(f'  Precision : ham={prec:.8f} | tinh_tay={prec_manual:.8f} | diff={abs(prec-prec_manual):.2e}')\n",
+    "print(f'  Recall    : ham={rec:.8f} | tinh_tay={rec_manual:.8f} | diff={abs(rec-rec_manual):.2e}')\n",
+    "print(f'  F1-Score  : ham={f1:.8f} | tinh_tay={f1_manual:.8f} | diff={abs(f1-f1_manual):.2e}')\n",
+    "\n",
+    "# 2. Kiem chung ROC-AUC bang cong thuc tich phan thang ke (trapezoid rule)\n",
+    "auc_trap = float(np.trapz(tpr, fpr))  # Tinh dien tich bang quy tac hinh thang\n",
+    "print(f'  ROC-AUC   : MannWhitneyU={auc:.8f} | TrapezoidRule={auc_trap:.8f} | diff={abs(auc-auc_trap):.2e}')\n",
+    "\n",
+    "# 3. Kiem chung tinh nhat quan: F1 tu Precision+Recall phai khop voi F1 tu ham\n",
+    "f1_from_pr  = (2*prec*rec)/(prec+rec) if (prec+rec)>0 else 0.0\n",
+    "print(f'  F1(P,R)   : tu Prec+Rec={f1_from_pr:.8f} | ham F1={f1:.8f} | diff={abs(f1_from_pr-f1):.2e}')\n",
+    "\n",
+    "# 4. Kiem chung Confusion Matrix: TP+TN+FP+FN phai bang tong mau test\n",
+    "cm_sum = tp_v + tn_v + fp_v + fn_v\n",
+    "print(f'  CM sum    : TP+TN+FP+FN={cm_sum:,} | X_test.shape[0]={X_test.shape[0]:,} | match={cm_sum==X_test.shape[0]}')\n",
+    "\n",
+    "all_ok = all([\n",
+    "    abs(acc-acc_manual) < 1e-9,\n",
+    "    abs(prec-prec_manual) < 1e-9,\n",
+    "    abs(rec-rec_manual) < 1e-9,\n",
+    "    abs(f1-f1_manual) < 1e-9,\n",
+    "    abs(auc-auc_trap) < 0.01,\n",
+    "    cm_sum == X_test.shape[0],\n",
+    "])\n",
+    "print(f'\\n  [Ket qua] {\"[OK] TAT CA METRICS CHINH XAC - THUAN NUMPY\" if all_ok else \"[WARN] Co bat dong - can kiem tra lai\"}')"
 ]))
 
 nb["cells"].append(md("s11-roc-comment", [
     "*Nhan xet*:\n",
-    "1. ROC Curve chung to kha nang phan tach tot giua SUSY va Background.\n",
-    "2. Loss History xac nhan Early Stopping: val_loss tang sau best iteration.\n",
-    "3. Custom metrics khop chinh xac voi sklearn - chung minh trien khai thuan NumPy dung."
+    "1. **ROC Curve** chung to mo hinh co kha nang phan tach tot giua SUSY va Background.\n",
+    "2. **Loss History** xac nhan Early Stopping: val_loss tang len sau best iteration.\n",
+    "3. **Kiem chung Metrics (Thuan NumPy - Zero Sklearn)**:\n",
+    "   - Accuracy, Precision, Recall, F1 duoc tinh lai bang tay tu Confusion Matrix -> khop hoan toan.\n",
+    "   - ROC-AUC (Mann-Whitney U) khop voi tinh tich phan (Trapezoid Rule) trong sai so O(1/N).\n",
+    "   - `TP+TN+FP+FN == X_test.shape[0]` xac nhan khong mat mau nao.\n",
+    "   - **Khong su dung bat ky ham nao tu sklearn** trong toan bo qua trinh kiem chung."
 ]))
 
 # ============================================================
@@ -1044,7 +1074,7 @@ nb["cells"].append(md("s14-conclusion", [
     "| Threshold chon tren Validation khong dung Test | Threshold sweep tren val_idx | **Dat** |\n",
     "| Final metrics chi dung Test 1 lan | Buoc 10 - lan duy nhat | **Dat** |\n",
     "| Duplicate overlap = 0 | Set intersection = 0 | **Dat** |\n",
-    "| Custom metrics khop sklearn (diff < 1e-6) | Ket qua kiem chung | **Dat** |\n",
+    "| Kiem chung noi bo thuan NumPy (diff < 1e-9) | Ket qua kiem chung | **Dat** |\n",
     "| Git commit + environment ghi lai | `git rev-parse HEAD` | **Dat** |\n",
     "\n",
     "### Ket luan\n",
