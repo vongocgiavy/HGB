@@ -65,9 +65,16 @@ def compute_confusion_matrix(y_true, y_pred):
         FP = False Positive : thực tế 0, dự đoán 1  (báo động giả)
         FN = False Negative : thực tế 1, dự đoán 0  (bỏ sót tín hiệu)
     """
-    y_t = np.asarray(y_true).astype(int).ravel()
-    y_p = np.asarray(y_pred).astype(int).ravel()
-    idx = 2 * y_t + y_p
+    y_t = np.asarray(y_true).ravel()
+    y_p = np.asarray(y_pred).ravel()
+    if len(y_t) != len(y_p):
+        raise ValueError(f"Kích thước không khớp: y_true ({len(y_t)}) != y_pred ({len(y_p)}).")
+    if not np.all(np.isin(y_t, [0, 1])):
+        raise ValueError(f"y_true phải là nhãn nhị phân {{0, 1}}. Nhận được nhãn: {np.unique(y_t).tolist()}")
+    if not np.all(np.isin(y_p, [0, 1])):
+        raise ValueError(f"y_pred phải là nhãn nhị phân {{0, 1}}. Nhận được nhãn: {np.unique(y_p).tolist()}")
+
+    idx = 2 * y_t.astype(int) + y_p.astype(int)
     counts = np.bincount(idx, minlength=4)
     return int(counts[3]), int(counts[0]), int(counts[1]), int(counts[2])
 
@@ -146,6 +153,13 @@ def compute_roc_auc(y_true, y_scores):
     y_true   = np.asarray(y_true).ravel()
     y_scores = np.asarray(y_scores).ravel()
 
+    if len(y_true) != len(y_scores):
+        raise ValueError(f"Kích thước không khớp: y_true ({len(y_true)}) != y_scores ({len(y_scores)}).")
+    if not np.all(np.isin(y_true, [0, 1])):
+        raise ValueError(f"y_true phải là nhãn nhị phân {{0, 1}}. Nhận được nhãn: {np.unique(y_true).tolist()}")
+    if not np.isfinite(y_scores).all():
+        raise ValueError("y_scores chứa giá trị NaN hoặc Inf.")
+
     pos_mask = (y_true == 1)
     n_pos = int(np.sum(pos_mask))
     n_neg = len(y_true) - n_pos
@@ -169,18 +183,28 @@ def compute_roc_auc(y_true, y_scores):
     return float(u_stat / (n_pos * n_neg))
 
 
-def compute_roc_curve(y_true, y_scores):
+def compute_roc_curve(y_true, y_scores, drop_intermediate: bool = True):
     """
     Tính False Positive Rate (FPR) và True Positive Rate (TPR) qua các ngưỡng phân loại (Zero Sklearn).
 
     Tham số:
-        y_true   : Nhãn thực tế nhị phân {0, 1}
-        y_scores : Điểm số xác suất liên tục
+        y_true            : Nhãn thực tế nhị phân {0, 1}
+        y_scores          : Điểm số xác suất liên tục
+        drop_intermediate : bool, loại bỏ các điểm cận tối ưu trên đoạn đồng tuyến (chuẩn Scikit-Learn)
     Trả về:
         fpr, tpr, thresholds (np.ndarray)
     """
-    y_t = np.asarray(y_true).astype(int).ravel()
+    y_t = np.asarray(y_true).ravel()
     scores = np.asarray(y_scores, dtype=np.float64).ravel()
+
+    if len(y_t) != len(scores):
+        raise ValueError(f"Kích thước không khớp: y_true ({len(y_t)}) != y_scores ({len(scores)}).")
+    if not np.all(np.isin(y_t, [0, 1])):
+        raise ValueError(f"y_true phải là nhãn nhị phân {{0, 1}}.")
+    if not np.isfinite(scores).all():
+        raise ValueError("y_scores chứa giá trị NaN hoặc Inf.")
+
+    y_t = y_t.astype(int)
     desc_order = np.argsort(-scores)
     y_sorted = y_t[desc_order]
     scores_sorted = scores[desc_order]
@@ -194,27 +218,45 @@ def compute_roc_curve(y_true, y_scores):
     n_pos = int(np.sum(y_t == 1))
     n_neg = int(np.sum(y_t == 0))
 
+    if drop_intermediate and len(fps) > 2:
+        optimal_idxs = np.where(np.r_[True, np.logical_or(np.diff(fps, 2), np.diff(tps, 2)), True])[0]
+        fps = fps[optimal_idxs]
+        tps = tps[optimal_idxs]
+        threshold_idxs = threshold_idxs[optimal_idxs]
+
     tpr = tps / max(n_pos, 1)
     fpr = fps / max(n_neg, 1)
 
     fpr = np.r_[0.0, fpr]
     tpr = np.r_[0.0, tpr]
-    thresholds = np.r_[scores_sorted[threshold_idxs[0]] + 1e-5, scores_sorted[threshold_idxs]]
+    thresholds = np.r_[np.inf, scores_sorted[threshold_idxs]]
     return fpr, tpr, thresholds
 
 
 def compute_precision_recall_curve(y_true, y_scores):
     """
-    Tính Precision và Recall qua các ngưỡng phân loại (Zero Sklearn).
+    Tính Precision và Recall qua các ngưỡng phân loại tăng dần (chuẩn Scikit-Learn API).
 
     Tham số:
         y_true   : Nhãn thực tế nhị phân {0, 1}
         y_scores : Điểm số xác suất liên tục
     Trả về:
         precision, recall, thresholds (np.ndarray)
+        - precision : mảng độ dài K + 1 (phần tử cuối là 1.0)
+        - recall    : mảng độ dài K + 1 (phần tử cuối là 0.0)
+        - thresholds: mảng độ dài K (thứ tự tăng dần)
     """
-    y_t = np.asarray(y_true).astype(int).ravel()
+    y_t = np.asarray(y_true).ravel()
     scores = np.asarray(y_scores, dtype=np.float64).ravel()
+
+    if len(y_t) != len(scores):
+        raise ValueError(f"Kích thước không khớp: y_true ({len(y_t)}) != y_scores ({len(scores)}).")
+    if not np.all(np.isin(y_t, [0, 1])):
+        raise ValueError(f"y_true phải là nhãn nhị phân {{0, 1}}.")
+    if not np.isfinite(scores).all():
+        raise ValueError("y_scores chứa giá trị NaN hoặc Inf.")
+
+    y_t = y_t.astype(int)
     desc_order = np.argsort(-scores)
     y_sorted = y_t[desc_order]
     scores_sorted = scores[desc_order]
@@ -229,11 +271,12 @@ def compute_precision_recall_curve(y_true, y_scores):
     precision = tps / np.maximum(tps + fps, 1)
     recall = tps / max(n_pos, 1)
 
-    thresholds = scores_sorted[threshold_idxs]
-    precision = np.r_[1.0, precision, 0.0]
-    recall = np.r_[0.0, recall, 1.0]
-    order = np.argsort(recall)
-    return precision[order], recall[order], thresholds
+    # Đảo chiều để thresholds tăng dần theo chuẩn Scikit-Learn
+    # Đảm bảo: len(precision) == len(recall) == len(thresholds) + 1
+    p = np.r_[precision[::-1], 1.0]
+    r = np.r_[recall[::-1], 0.0]
+    th = scores_sorted[threshold_idxs][::-1]
+    return p, r, th
 
 
 # Aliases tương thích với Scikit-Learn
@@ -259,8 +302,14 @@ class HistBinMapper:
     """
 
     def __init__(self, max_bins: int = 255):
-        """Khởi tạo HistBinMapper với số thùng tối đa (mặc định 255 = uint8)."""
-        self.max_bins = max_bins
+        """Khởi tạo HistBinMapper với số thùng tối đa (mặc định 255, tối đa 256 do kiểu uint8)."""
+        max_bins_int = int(max_bins)
+        if not (2 <= max_bins_int <= 256):
+            raise ValueError(
+                f"max_bins phai nam trong khoang [2, 256] do bieu dien uint8 [0..255]. "
+                f"Nhan duoc: {max_bins}"
+            )
+        self.max_bins = max_bins_int
         self.bin_thresholds_ = []   # Danh sách ngưỡng cho từng đặc trưng
         self.n_features_in_ = None
 
@@ -270,9 +319,11 @@ class HistBinMapper:
         Chỉ gọi fit() trên tập huấn luyện để tránh data leakage.
         Trả về: self (để chain .fit().transform())
         """
+        if hasattr(X, 'values'):
+            X = X.values
         X = np.asarray(X, dtype=np.float32)
-        if np.isnan(X).any():
-            raise ValueError("Dữ liệu X chứa giá trị NaN. Mô hình yêu cầu dữ liệu đã được xử lý (impute) trước khi fit.")
+        if not np.isfinite(X).all():
+            raise ValueError("Dữ liệu X chứa giá trị không hợp lệ (NaN hoặc +/-Inf). Vui lòng xử lý (impute/clean) trước khi fit.")
         
         self.n_features_in_ = X.shape[1]
         self.bin_thresholds_ = []
@@ -286,14 +337,16 @@ class HistBinMapper:
 
     def transform(self, X) -> np.ndarray:
         """Trả về ma trận uint8 có cùng shape với X."""
+        if hasattr(X, 'values'):
+            X = X.values
         X = np.asarray(X, dtype=np.float32)
         if self.n_features_in_ is not None and X.shape[1] != self.n_features_in_:
             raise ValueError(
                 f"Số đặc trưng không khớp: fit với {self.n_features_in_} cột, "
                 f"nhưng transform nhận {X.shape[1]} cột."
             )
-        if np.isnan(X).any():
-            raise ValueError("Dữ liệu X truyền vào transform chứa giá trị NaN.")
+        if not np.isfinite(X).all():
+            raise ValueError("Dữ liệu X truyền vào transform chứa giá trị NaN hoặc +/-Inf.")
 
         n_samples, n_features = X.shape
         X_binned = np.empty((n_samples, n_features), dtype=np.uint8)
@@ -546,6 +599,8 @@ class CustomHistGradientBoostingClassifier:
         self.tol                 = float(tol)
         self.random_state        = random_state
 
+        self._validate_params()
+
         # --- Trạng thái nội bộ ---
         self.bin_mapper          = HistBinMapper(max_bins=self.max_bins)
         self.trees               = []
@@ -560,6 +615,29 @@ class CustomHistGradientBoostingClassifier:
         self.val_loss_history_         = []
         self.full_train_loss_history_  = []   # lịch sử đầy đủ đến khi early-stop (trước khi trim)
         self.full_val_loss_history_    = []   # lịch sử đầy đủ đến khi early-stop (trước khi trim)
+
+    def _validate_params(self):
+        """Kiem tra tinh hop le cua toan bo sieu tham so mo hinh."""
+        if self.n_estimators <= 0:
+            raise ValueError(f"n_estimators phai la so nguyen duong > 0 (nhan duoc: {self.n_estimators}).")
+        if self.learning_rate <= 0:
+            raise ValueError(f"learning_rate phai la so thuc duong > 0 (nhan duoc: {self.learning_rate}).")
+        if self.max_depth <= 0:
+            raise ValueError(f"max_depth phai la so nguyen duong > 0 (nhan duoc: {self.max_depth}).")
+        if self.min_samples_leaf <= 0:
+            raise ValueError(f"min_samples_leaf phai la so nguyen duong > 0 (nhan duoc: {self.min_samples_leaf}).")
+        if self.l2_reg < 0:
+            raise ValueError(f"l2_regularization phai >= 0 (nhan duoc: {self.l2_reg}).")
+        if not (2 <= self.max_bins <= 256):
+            raise ValueError(f"max_bins phai nam trong khoang [2, 256] do kieu uint8 (nhan duoc: {self.max_bins}).")
+        if self.min_gain < 0:
+            raise ValueError(f"min_gain_to_split phai >= 0 (nhan duoc: {self.min_gain}).")
+        if not (0.0 < self.validation_fraction < 1.0):
+            raise ValueError(f"validation_fraction phai nam trong khoang (0.0, 1.0) (nhan duoc: {self.validation_fraction}).")
+        if self.n_iter_no_change <= 0:
+            raise ValueError(f"n_iter_no_change (patience) phai la so nguyen duong > 0 (nhan duoc: {self.n_iter_no_change}).")
+        if self.tol < 0:
+            raise ValueError(f"tol phai >= 0 (nhan duoc: {self.tol}).")
 
     def get_params(self, deep=True):
         """Lấy danh sách tham số (tương thích Scikit-Learn GridSearchCV & CustomGridSearchCV)."""
@@ -595,6 +673,7 @@ class CustomHistGradientBoostingClassifier:
                 self.bin_mapper = HistBinMapper(max_bins=self.max_bins)
             else:
                 setattr(self, key, value)
+        self._validate_params()
         return self
 
     # ---------- Hàm tĩnh hỗ trợ ----------
@@ -662,16 +741,18 @@ class CustomHistGradientBoostingClassifier:
         X = np.asarray(X, dtype=np.float32)
         y = np.asarray(y, dtype=np.float32)
 
-        if np.isnan(X).any():
-            raise ValueError("Dữ liệu đầu vào X chứa NaN. Vui lòng xử lý (impute/drop) trước khi fit().")
-        if np.isnan(y).any():
-            raise ValueError("Nhãn y chứa NaN. Vui lòng xử lý trước khi fit().")
+        self._validate_params()
+
+        if not np.isfinite(X).all():
+            raise ValueError("Du lieu dau vao X chua gia tri khong hop le (NaN hoac +/-Inf). Vui long xu ly truoc khi fit().")
+        if not np.isfinite(y).all():
+            raise ValueError("Nhan y chua gia tri khong hop le (NaN hoac +/-Inf). Vui long xu ly truoc khi fit().")
 
         unique_y = np.unique(y)
         if not np.all(np.isin(unique_y, [0, 1])):
             raise ValueError(
-                f"CustomHistGradientBoostingClassifier hiện chỉ hỗ trợ phân loại nhị phân nhãn {{0, 1}}. "
-                f"Nhãn nhận được: {unique_y.tolist()}"
+                f"CustomHistGradientBoostingClassifier hien chi ho tro phan loai nhi phan nhan {{0, 1}}. "
+                f"Nhan nhan duoc: {unique_y.tolist()}"
             )
 
         self.n_features_in_ = X.shape[1]
@@ -814,8 +895,8 @@ class CustomHistGradientBoostingClassifier:
                 f"Số đặc trưng không khớp: fit với {self.n_features_in_} đặc trưng, "
                 f"nhưng predict nhận {X.shape[1]} đặc trưng."
             )
-        if np.isnan(X).any():
-            raise ValueError("Dữ liệu X truyền vào predict chứa giá trị NaN.")
+        if not np.isfinite(X).all():
+            raise ValueError("Dữ liệu X truyền vào predict chứa giá trị không hợp lệ (NaN hoặc +/-Inf).")
 
         X_b = self.bin_mapper.transform(X)
         F   = np.full(X_b.shape[0], self.base_score_, dtype=np.float32)
@@ -1151,6 +1232,9 @@ class CustomGridSearchCV:
         self.best_score_ = float(cv_results['mean_test_score'][self.best_index_])
 
         total_time = time.time() - start_total
+        self.total_search_time_ = float(total_time)
+        self.refit_time_ = 0.0
+
         if self.verbose >= 1:
             print("-" * 78)
             print(f"[*] HOAN TAT TIM KIEM LUOI TRONG {total_time:.2f} GIAY")
@@ -1162,12 +1246,14 @@ class CustomGridSearchCV:
         if self.refit:
             if self.verbose >= 1:
                 print(f"[*] Dang huan luyen lai (refit) best_estimator_ tren toan bo du lieu {X_arr.shape[0]:,} mau...")
+            t_refit_start = time.time()
             best_model = copy.deepcopy(self.estimator)
             best_model.set_params(**self.best_params_)
             best_model.fit(X_arr, y_arr, verbose=(self.verbose >= 2))
+            self.refit_time_ = float(time.time() - t_refit_start)
             self.best_estimator_ = best_model
             if self.verbose >= 1:
-                print("[*] Huan luyen lai hoan tat! Mo hinh da san sang du doan.\n")
+                print(f"[*] Huan luyen lai hoan tat trong {self.refit_time_:.2f}s! Mo hinh da san sang du doan.\n")
 
         return self
 

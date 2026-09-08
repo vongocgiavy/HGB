@@ -169,27 +169,26 @@ def main():
         print("   GRID SEARCH K-FOLD CV (CUSTOM, ZERO SKLEARN)")
         print(SEP)
 
-        # -------------------------------------------------------------------
-        # Staged Hyperparameter Tuning Guide
-        # -------------------------------------------------------------------
-        # Giai doạn 1 (hiện tại): Tuỳ chỉnh 4 tham số cốt lõi.
-        #   Tổng hợp: 2 × 2 × 2 × 3 = 24 tổ hợp × cv_folds fits.
-        #   Thời gian ước lượng (60k rows, 3 folds): ~30-60 phút.
-        #
-        # Để mở rộng sang Giai đoạn 2 (sau khi chốt lại 1-2 giá trị ở trên):
-        #   Thêm vào param_grid:
-        #     "n_estimators":      [100, 200, 300],
-        #     "min_gain_to_split": [0.0, 1e-4, 1e-3],
-        #     "max_bins":          [127, 255],
-        # -------------------------------------------------------------------
+        if X_train.shape[0] > 100_000:
+            print(f"\n[!] CANH BAO HIEU NANG:")
+            print(f"    Tap huan luyen hien tai co {X_train.shape[0]:,} mau.")
+            print(f"    Grid Search gom 24 to hop x {args.cv_folds} folds = {24 * args.cv_folds} luot fit mo hinh.")
+            print("    Qua trinh nay co the ton nhieu gio. Khuyen nghi chay Grid Search tren tap con")
+            print("    (vi du: python main.py --nrows 60000 --grid_search) de tim sieu tham so toi uu,")
+            print("    sau do ap dung vao toan bo 5,000,000 dong o che do single-fit.\n")
+
+        # Giai doan 1: Tinh chinh 4 tham so cot loi.
+        # Luu y ve 2 tang validation:
+        # Trong moi fold CV, tap train fold tiep tuc tach 10% cho internal early stopping
+        # nham chong qua khop va tim so luong cay toi uu.
         param_grid = {
             "learning_rate":    [0.05, 0.1],
             "max_depth":        [4, 6],
             "min_samples_leaf": [20, 50],
-            "l2_regularization": [0.5, 1.0, 2.0],  # Stage 1: tuần chỉnh điều chuẩn
+            "l2_regularization": [0.5, 1.0, 2.0],  # Stage 1: dieu chuan L2
         }
         base = CustomHistGradientBoostingClassifier(
-            n_estimators=min(args.n_estimators, 100),  # tăng từ 80 → 100 để early-stop có đủ vong
+            n_estimators=min(args.n_estimators, 100),  # tran 100 cho grid search
             l2_regularization=args.l2_reg,
             max_bins=args.max_bins,
             validation_fraction=args.val_fraction,
@@ -201,13 +200,14 @@ def main():
             cv=args.cv_folds, scoring="roc_auc",
             threshold=args.threshold, refit=True, verbose=1,
         )
-        t0 = time.time()
         gs.fit(X_train, y_train)
-        t_train = time.time() - t0
+        t_grid_search = getattr(gs, "total_search_time_", 0.0)
+        t_refit       = getattr(gs, "refit_time_", 0.0)
         print("\nGrid Search Results (sorted by ROC-AUC):")
         print(gs.summary())
         print(f"\nBest params : {gs.best_params_}")
         model = gs.best_estimator_
+        active_config = model.get_params()
     else:
         print("\n[4] Training HGB (with internal Early Stopping)...")
         sys.stdout.flush()
@@ -216,6 +216,7 @@ def main():
         model.fit(X_train, y_train, verbose=True)
         t_train = time.time() - t0
         sys.stdout.flush()
+        active_config = hgb_config
 
     # ------------------------------------------------------------------
     # 5. Predict & Metrics
@@ -274,19 +275,28 @@ def main():
     print(f"  {'Thr':>5} | {'Acc':>8} | {'Prec':>8} | {'Recall':>8} |"
           f" {'F1':>8} | {'Spec':>8} | {'FN':>6}")
     print("  " + LINE)
+    sweep_results = {}
     for th in [0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60]:
         p_th = (y_proba >= th).astype(int)
         _, _, _, fn_th = compute_confusion_matrix(y_test, p_th)
+        rec_val = compute_recall(y_test, p_th)
+        prec_val = compute_precision(y_test, p_th)
+        sweep_results[th] = {"recall": rec_val, "precision": prec_val}
         marker = " <==CURRENT" if abs(th - args.threshold) < 1e-4 else ""
         print(f"  {th:.2f}  | {compute_accuracy(y_test,p_th)*100:7.2f}%"
-              f" | {compute_precision(y_test,p_th)*100:7.2f}%"
-              f" | {compute_recall(y_test,p_th)*100:7.2f}%"
+              f" | {prec_val*100:7.2f}%"
+              f" | {rec_val*100:7.2f}%"
               f" | {compute_f1_score(y_test,p_th)*100:7.2f}%"
               f" | {compute_specificity(y_test,p_th)*100:7.2f}%"
               f" | {fn_th:5,}{marker}")
     print("  " + LINE)
-    print("  Tip: Lower threshold => higher Recall (fewer missed SUSY).")
-    print("       --threshold 0.30  for Recall >80%  |  --threshold 0.50 for Precision >80%")
+    
+    # Khuyen nghi nguong dong dua tren so lieu thuc te cua mo hinh
+    th_rec_80 = max([th for th, res in sweep_results.items() if res["recall"] >= 0.80], default=None)
+    th_prec_80 = min([th for th, res in sweep_results.items() if res["precision"] >= 0.80], default=None)
+    rec_str = f"--threshold {th_rec_80:.2f} (Recall: {sweep_results[th_rec_80]['recall']*100:.1f}%)" if th_rec_80 else "khong co nguong dat >= 80%"
+    prec_str = f"--threshold {th_prec_80:.2f} (Precision: {sweep_results[th_prec_80]['precision']*100:.1f}%)" if th_prec_80 else "khong co nguong dat >= 80%"
+    print(f"  Khuyen nghi thuc nghiem: {rec_str}  |  {prec_str}")
 
     # ------------------------------------------------------------------
     # 8. Feature Importances (Gain + Permutation)
@@ -317,8 +327,8 @@ def main():
         desc   = FEATURE_DESCRIPTIONS.get(feat, "")
         print(f"  {rank:3d} | {feat:<16} | {g*100:6.2f}% | #{p_rank:<4} | {p:+.5f}  | {desc}")
     print("  " + LINE)
-    print("  NOTE: Gain can be inflated for features chosen at root nodes.")
-    print("        Permutation DeltaAUC is model-agnostic and more reliable.")
+    print("  Luu y: Permutation DeltaAUC duoc danh gia hau nghiem (post-hoc) tren Test set")
+    print("         de do luong do nhay dac trung doc lap, hoan toan khong anh huong den qua trinh train.")
 
     # ------------------------------------------------------------------
     # 9. Training diagnostics
@@ -328,11 +338,22 @@ def main():
     print(SEP)
     print("   TRAINING DIAGNOSTICS")
     print(SEP)
-    print(f"  Max estimators configured : {args.n_estimators}")
-    print(f"  Trees built (stopped at)  : {stopped}")
-    print(f"  Best iteration (pruned to): {model.best_n_iter_}")
-    print(f"  Best val loss             : {model.best_val_loss_:.5f}")
-    print(f"  Training time             : {t_train:.2f}s  ({t_train/stopped:.3f}s/tree)")
+    if args.grid_search:
+        n_combos = len(gs.cv_results_.get('params', []))
+        print(f"  Che do huan luyen         : Grid Search ({n_combos} to hop x {args.cv_folds} folds) + Refit")
+        print(f"  Max estimators configured : {model.n_estimators} (Best Model)")
+        print(f"  Trees built (stopped at)  : {stopped}")
+        print(f"  Best iteration (pruned to): {model.best_n_iter_}")
+        print(f"  Best val loss             : {model.best_val_loss_:.5f}")
+        print(f"  Grid Search total time    : {t_grid_search:.2f}s ({n_combos * args.cv_folds} fits)")
+        print(f"  Best model refit time     : {t_refit:.2f}s ({t_refit/max(stopped, 1):.3f}s/tree)")
+    else:
+        print(f"  Che do huan luyen         : Single Fit (Manual Configuration)")
+        print(f"  Max estimators configured : {args.n_estimators}")
+        print(f"  Trees built (stopped at)  : {stopped}")
+        print(f"  Best iteration (pruned to): {model.best_n_iter_}")
+        print(f"  Best val loss             : {model.best_val_loss_:.5f}")
+        print(f"  Training time             : {t_train:.2f}s ({t_train/max(stopped, 1):.3f}s/tree)")
     print(SEP)
 
     # ------------------------------------------------------------------
@@ -346,10 +367,17 @@ def main():
         f.write(f"Data    : SUSY.csv  {nrows_str} rows  "
                 f"Train={X_train.shape[0]:,}  Test={X_test.shape[0]:,}\n")
         f.write(f"Model   : Histogram Gradient Boosting (Zero Scikit-Learn)\n")
+        f.write(f"Mode    : {'Grid Search (Best Estimator)' if args.grid_search else 'Single Fit'}\n")
         f.write(f"Seed    : {args.random_state}\n\n")
-        f.write("[HYPERPARAMETERS]:\n")
-        for k, v in hgb_config.items():
+        f.write("[HYPERPARAMETERS EVALUATED]:\n")
+        for k, v in active_config.items():
             f.write(f"  {k:<22}: {v}\n")
+        if args.grid_search:
+            f.write(f"\n[GRID SEARCH METADATA]:\n")
+            f.write(f"  Best Params Found     : {gs.best_params_}\n")
+            f.write(f"  Best CV {gs.scoring} Score : {gs.best_score_:.4f}\n")
+            f.write(f"  Total Search Time     : {t_grid_search:.2f}s\n")
+            f.write(f"  Best Model Refit Time : {t_refit:.2f}s\n")
         f.write("\n[TEST SET METRICS]:\n")
         for name, val, _ in metrics:
             f.write(f"  {name:<14}: {val:.4f}\n")
