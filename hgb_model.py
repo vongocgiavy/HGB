@@ -695,7 +695,7 @@ class CustomHistGradientBoostingClassifier:
 
         # Bước 2: Rời rạc hóa — fit CHỈ trên X_raw_tr, transform cả hai tập riêng
         if verbose:
-            print(f"[*] Roi rac hoa {self.max_bins} bins (Quantile Binning — fit tren train-sub only)...")
+            print(f"[*] Roi rac hoa {self.max_bins} bins (Quantile Binning - fit tren {len(X_raw_tr):,} train-sub samples only)...")
         self.bin_mapper = HistBinMapper(max_bins=self.max_bins)
         self.bin_mapper.fit(X_raw_tr)
         X_tr  = self.bin_mapper.transform(X_raw_tr)
