@@ -1,16 +1,40 @@
-{
- "cells": [
-  {
-   "cell_type": "markdown",
-   "id": "s1-title",
-   "metadata": {},
-   "source": [
+"""
+Script tao lai notebook.ipynb theo cau truc chuan cua credit_card_default_logistic_regression.ipynb:
+- Moi section co markdown giai thich truoc -> code cell -> nhan xet sau
+- 14 sections ro rang
+"""
+import json
+
+nb = {
+    "cells": [],
+    "metadata": {
+        "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
+        "language_info": {"name": "python", "version": "3.11.0"}
+    },
+    "nbformat": 4,
+    "nbformat_minor": 5
+}
+
+def md(id_, lines):
+    return {"cell_type": "markdown", "id": id_, "metadata": {}, "source": lines}
+
+def code(id_, lines, outputs=None):
+    return {"cell_type": "code", "execution_count": None, "id": id_,
+            "metadata": {}, "outputs": outputs or [], "source": lines}
+
+# ============================================================
+# SECTION 1: Title & Introduction
+# ============================================================
+nb["cells"].append(md("s1-title", [
     "# BAO CAO MACHINE LEARNING: PHAN LOAI SU KIEN VA CHAM HAT SIEU DOI XUNG (SUSY)\n",
     "\n",
     "## 1. GIOI THIEU DE TAI\n",
     "\n",
     "### Boi canh bai toan\n",
-    "Trong vat ly hat nhan hien dai, mot trong nhung thach thuc lon nhat la phan biet cac su kien sinh ra **hat sieu doi xung (SUSY)** voi cac su kien nhieu nen tu **Mo hinh Chuan (Standard Model)**. Bai toan dat muc tieu xay dung mo hinh du bao xac suat mot su kien va cham co chua hat sieu doi xung hay khong, dua tren **18 dac trung vat ly** (8 low-level do truc tiep va 10 high-level tinh toan).\n",
+    "Trong vat ly hat nhan hien dai, mot trong nhung thach thuc lon nhat la phan biet cac su kien sinh ra "
+    "**hat sieu doi xung (SUSY)** voi cac su kien nhieu nen tu **Mo hinh Chuan (Standard Model)**. "
+    "Bai toan dat muc tieu xay dung mo hinh du bao xac suat mot su kien va cham co chua hat sieu doi xung hay khong, "
+    "dua tren **18 dac trung vat ly** (8 low-level do truc tiep va 10 high-level tinh toan).\n",
     "\n",
     "### Muc tieu bai toan\n",
     "- Xay dung **Histogram Gradient Boosting (HGB)** tu dau bang **thuan NumPy - Zero Scikit-Learn**.\n",
@@ -18,13 +42,12 @@
     "- **Data Leakage Audit day du**: bin fitting, GridSearch, early stopping, threshold - tat ca tren Training only.\n",
     "- **Kiem chung Custom HGB/metrics** voi thu vien tham chieu sklearn.\n",
     "- Phan tich Feature Importances (Gain + Permutation)."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s2-dataset",
-   "metadata": {},
-   "source": [
+]))
+
+# ============================================================
+# SECTION 2: Dataset Introduction
+# ============================================================
+nb["cells"].append(md("s2-dataset", [
     "## 2. GIOI THIEU DATASET\n",
     "\n",
     "Bai toan su dung bo du lieu chuan quoc te **UCI SUSY Dataset** (Baldi, Sadowski, Whiteson, 2014):\n",
@@ -54,25 +77,19 @@
     "| 16 | `M_Delta_R` | High-level | Khoi luong hieu Super-Razor |\n",
     "| 17 | `dPhi_r_b` | High-level | Goc phuong vi tuong doi |\n",
     "| 18 | `cos_theta_r1` | High-level | cos(theta_r1) goc phan ra trong he Razor |"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s3-env-header",
-   "metadata": {},
-   "source": [
+]))
+
+# ============================================================
+# SECTION 3: Environment
+# ============================================================
+nb["cells"].append(md("s3-env-header", [
     "## 3. MOI TRUONG THUC THI & PHIEN BAN THU VIEN\n",
     "\n",
-    "Import cac thu vien Python can thiet va kiem tra phien ban moi truong. Ma nguon loi cua mo hinh **khong phu thuoc vao bat ky ham may hoc nao cua Scikit-Learn**."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s3-env-code",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+    "Import cac thu vien Python can thiet va kiem tra phien ban moi truong. "
+    "Ma nguon loi cua mo hinh **khong phu thuoc vao bat ky ham may hoc nao cua Scikit-Learn**."
+]))
+
+nb["cells"].append(code("s3-env-code", [
     "import sys\n",
     "import os\n",
     "import time\n",
@@ -96,21 +113,17 @@
     "    print(f\"[*] Git commit: {commit}\")\n",
     "except Exception:\n",
     "    print(\"[*] Git commit: (N/A)\")"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s3-env-comment",
-   "metadata": {},
-   "source": [
-    "*Nhan xet*: Moi truong thuc thi da duoc ghi lai day du. Git commit hash dam bao kha nang tai tao ket qua (reproducibility)."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s4-algo-header",
-   "metadata": {},
-   "source": [
+]))
+
+nb["cells"].append(md("s3-env-comment", [
+    "*Nhan xet*: Moi truong thuc thi da duoc ghi lai day du. "
+    "Git commit hash dam bao kha nang tai tao ket qua (reproducibility)."
+]))
+
+# ============================================================
+# SECTION 4: Algorithm - Part 1: Metrics
+# ============================================================
+nb["cells"].append(md("s4-algo-header", [
     "## 4. CAI DAT THUAT TOAN HGB (THUAN NUMPY - ZERO SCIKIT-LEARN)\n",
     "\n",
     "Toan bo ma nguon HGB duoi day duoc viet bang **thuan NumPy**, khong dung bat ky ham ML nao tu sklearn:\n",
@@ -121,23 +134,11 @@
     "4. **`HistRegressionTree`**: Cay Histogram O(D*K) bang bincount + cumsum.\n",
     "5. **`CustomHistGradientBoostingClassifier`**: Boosting voi Shrinkage + Early Stopping (Validation subset).\n",
     "6. **`CustomGridSearchCV`**: Grid Search chi tren Training data."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s4-p1-header",
-   "metadata": {},
-   "source": [
-    "### 4.1. Ham phan chia du lieu & chi so danh gia (Zero Sklearn)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s4-p1-code",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+nb["cells"].append(md("s4-p1-header", ["### 4.1. Ham phan chia du lieu & chi so danh gia (Zero Sklearn)"]))
+
+nb["cells"].append(code("s4-p1-code", [
     "def train_test_split_stratified(X, y, test_size=0.2, random_state=42):\n",
     "    \"\"\"Phan chia Train/Test phan tang (Stratified). Khong dung scikit-learn.\"\"\"\n",
     "    rng = np.random.RandomState(random_state)\n",
@@ -221,31 +222,19 @@
     "    return np.r_[0.0, fps/max(nn,1)], np.r_[0.0, tps/max(np_,1)], np.r_[np.inf, ss[ti]]\n",
     "\n",
     "print(\"[OK] Metrics va ham phan chia du lieu da dinh nghia (Zero Sklearn).\")"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s4-p1-comment",
-   "metadata": {},
-   "source": [
-    "*Nhan xet*: Tat ca chi so deu duoc cai dat thuan NumPy. ROC-AUC dung thong ke Mann-Whitney U dam bao chinh xac tuyet doi."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s4-p2-header",
-   "metadata": {},
-   "source": [
-    "### 4.2. HistBinMapper - Roi rac hoa dac trung (Quantile Binning)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s4-p2-code",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+nb["cells"].append(md("s4-p1-comment", [
+    "*Nhan xet*: Tat ca chi so deu duoc cai dat thuan NumPy. "
+    "ROC-AUC dung thong ke Mann-Whitney U dam bao chinh xac tuyet doi."
+]))
+
+# ============================================================
+# SECTION 4.2: HistBinMapper
+# ============================================================
+nb["cells"].append(md("s4-p2-header", ["### 4.2. HistBinMapper - Roi rac hoa dac trung (Quantile Binning)"]))
+
+nb["cells"].append(code("s4-p2-code", [
     "class HistBinMapper:\n",
     "    \"\"\"\n",
     "    Roi rac hoa ma tran dac trung lien tuc -> uint8 Quantile Binning.\n",
@@ -279,31 +268,19 @@
     "    def fit_transform(self, X): return self.fit(X).transform(X)\n",
     "\n",
     "print(\"[OK] HistBinMapper dinh nghia (fit() chi tren X_train).\")"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s4-p2-comment",
-   "metadata": {},
-   "source": [
-    "*Nhan xet*: `HistBinMapper` roi rac hoa moi dac trung thanh toi da 255 thung `uint8`. **fit() chi goi tren X_train** - dam bao khong co Data Leakage ve phan phoi."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s4-p3-header",
-   "metadata": {},
-   "source": [
-    "### 4.3. HistRegressionTree - Cay quyet dinh Histogram"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s4-p3-code",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+nb["cells"].append(md("s4-p2-comment", [
+    "*Nhan xet*: `HistBinMapper` roi rac hoa moi dac trung thanh toi da 255 thung `uint8`. "
+    "**fit() chi goi tren X_train** - dam bao khong co Data Leakage ve phan phoi."
+]))
+
+# ============================================================
+# SECTION 4.3: HistRegressionTree
+# ============================================================
+nb["cells"].append(md("s4-p3-header", ["### 4.3. HistRegressionTree - Cay quyet dinh Histogram"]))
+
+nb["cells"].append(code("s4-p3-code", [
     "class HistTreeNode:\n",
     "    __slots__ = ('is_leaf','value','feature_idx','bin_threshold','gain','left','right')\n",
     "    def __init__(self, is_leaf=False, value=0.0, feature_idx=None, bin_threshold=None, gain=0.0):\n",
@@ -386,31 +363,21 @@
     "        self._collect_gains(node.right, gains)\n",
     "\n",
     "print(\"[OK] HistTreeNode & HistRegressionTree dinh nghia.\")"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s4-p3-comment",
-   "metadata": {},
-   "source": [
-    "*Nhan xet*: Tim diem chia tot nhat dung **histogram + cumulative sum** - O(D*K). Trong so la duoc toi uu Newton-Raphson voi phat L2."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s4-p4-header",
-   "metadata": {},
-   "source": [
+]))
+
+nb["cells"].append(md("s4-p3-comment", [
+    "*Nhan xet*: Tim diem chia tot nhat dung **histogram + cumulative sum** - O(D*K). "
+    "Trong so la duoc toi uu Newton-Raphson voi phat L2."
+]))
+
+# ============================================================
+# SECTION 4.4: Classifier
+# ============================================================
+nb["cells"].append(md("s4-p4-header", [
     "### 4.4. CustomHistGradientBoostingClassifier - Bo phan loai Boosting"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s4-p4-code",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+nb["cells"].append(code("s4-p4-code", [
     "class CustomHistGradientBoostingClassifier:\n",
     "    \"\"\"\n",
     "    HGB Classifier hoan chinh - Zero Scikit-Learn.\n",
@@ -516,33 +483,23 @@
     "        return self\n",
     "\n",
     "print(\"[OK] CustomHistGradientBoostingClassifier dinh nghia.\")"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s4-p4-comment",
-   "metadata": {},
-   "source": [
+]))
+
+nb["cells"].append(md("s4-p4-comment", [
     "*Nhan xet*:\n",
-    "- **Early Stopping** dung khi val_loss khong cai thien sau `n_iter_no_change` vong. Validation set la subset cua X_train - **hoan toan khong dung X_test**.\n",
+    "- **Early Stopping** dung khi val_loss khong cai thien sau `n_iter_no_change` vong. "
+    "Validation set la subset cua X_train - **hoan toan khong dung X_test**.\n",
     "- **Bin fitting** chi tren X_tr (sau khi tach val) - khong data leakage."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s4-p5-header",
-   "metadata": {},
-   "source": [
+]))
+
+# ============================================================
+# SECTION 4.5: GridSearch
+# ============================================================
+nb["cells"].append(md("s4-p5-header", [
     "### 4.5. CustomGridSearchCV - Tim kiem sieu tham so tren Training data"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s4-p5-code",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+nb["cells"].append(code("s4-p5-code", [
     "class StratifiedKFold:\n",
     "    def __init__(self, n_splits=5, shuffle=True, random_state=42):\n",
     "        self.n_splits=n_splits; self.shuffle=shuffle; self.random_state=random_state\n",
@@ -599,36 +556,26 @@
     "\n",
     "print(\"[OK] StratifiedKFold & CustomGridSearchCV dinh nghia.\")\n",
     "print(\"     [Leakage Audit] GridSearch chi nhan X_train - Test set hoan toan khong duoc su dung.\")"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s4-p5-comment",
-   "metadata": {},
-   "source": [
-    "*Nhan xet*: `CustomGridSearchCV` tim kiem sieu tham so tot nhat chi tren Training data. Test set duoc giu hoan toan untouched cho den buoc danh gia cuoi cung."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s5-load-header",
-   "metadata": {},
-   "source": [
+]))
+
+nb["cells"].append(md("s4-p5-comment", [
+    "*Nhan xet*: `CustomGridSearchCV` tim kiem sieu tham so tot nhat chi tren Training data. "
+    "Test set duoc giu hoan toan untouched cho den buoc danh gia cuoi cung."
+]))
+
+# ============================================================
+# SECTION 5: Data Loading
+# ============================================================
+nb["cells"].append(md("s5-load-header", [
     "## 5. DOC DU LIEU & KIEM TRA CHAT LUONG\n",
     "\n",
     "Doc toan bo **5,000,000 mau** tu tep `SUSY.csv` va kiem tra chat luong:\n",
     "- So mau duoc tai (bat buoc = 5,000,000)\n",
     "- Duplicate rows, NaN, Inf\n",
     "- Phan bo nhan (Signal vs Background)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s5-load-code",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+nb["cells"].append(code("s5-load-code", [
     "FEATURE_NAMES = [\n",
     "    'lepton1_pT','lepton1_eta','lepton1_phi',\n",
     "    'lepton2_pT','lepton2_eta','lepton2_phi',\n",
@@ -668,47 +615,30 @@
     "print(f'    Inf        : {inf:,}')\n",
     "n_pos = int((y==1).sum()); n_neg = int((y==0).sum())\n",
     "print(f'    Nhan       : {n_pos:,} SUSY ({n_pos/len(y)*100:.2f}%)  |  {n_neg:,} Background ({n_neg/len(y)*100:.2f}%)')"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s5-load-comment",
-   "metadata": {},
-   "source": [
+]))
+
+nb["cells"].append(md("s5-load-comment", [
     "*Nhan xet sau khi doc du lieu*:\n",
     "1. **Toan bo 5,000,000 mau** deu duoc nap thanh cong - khong gioi han nrows.\n",
     "2. **Chat luong hoan chinh**: Khong co NaN, Inf, Duplicate.\n",
     "3. **Phan bo nhan**: Dataset tuong doi can bang (~46% SUSY, ~54% Background)."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s6-eda-header",
-   "metadata": {},
-   "source": [
+]))
+
+# ============================================================
+# SECTION 6: EDA
+# ============================================================
+nb["cells"].append(md("s6-eda-header", [
     "## 6. KHAM PHA DU LIEU (EXPLORATORY DATA ANALYSIS - EDA)\n",
     "\n",
     "Thuc hien kham pha: thong ke mo ta, phan bo 18 dac trung."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s6-eda-stats",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+nb["cells"].append(code("s6-eda-stats", [
     "print('=== THONG KE MO TA DU LIEU (18 dac trung) ===')\n",
     "print(df[FEATURE_NAMES].describe().T[['mean','std','min','25%','50%','75%','max']].to_string())"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s6-eda-plot",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+nb["cells"].append(code("s6-eda-plot", [
     "fig, axes = plt.subplots(2, 4, figsize=(16, 6))\n",
     "axes = axes.ravel()\n",
     "si = np.random.RandomState(42).choice(len(df), 100_000, replace=False)\n",
@@ -719,24 +649,19 @@
     "    axes[i].set_title(feat, fontsize=9); axes[i].legend(fontsize=8)\n",
     "plt.suptitle('Phan bo 8 dac trung Low-level (100k mau)', fontsize=12, y=1.01)\n",
     "plt.tight_layout(); plt.show()"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s6-eda-comment",
-   "metadata": {},
-   "source": [
+]))
+
+nb["cells"].append(md("s6-eda-comment", [
     "*Nhan xet EDA*:\n",
     "1. Nhieu dac trung co phan bo lech phai (right-skewed).\n",
     "2. Cac dac trung High-level (M_R, MT2, S_R) phan tach SUSY vs Background ro rang hon.\n",
     "3. Khong can Feature Engineering - dataset vat ly chuan da co du dac trung chuyen biet."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s7-split-header",
-   "metadata": {},
-   "source": [
+]))
+
+# ============================================================
+# SECTION 7: Train/Test Split
+# ============================================================
+nb["cells"].append(md("s7-split-header", [
     "## 7. PHAN CHIA DU LIEU: 4,000,000 TRAIN / 1,000,000 TEST\n",
     "\n",
     "Phan chia stratified 80/20:\n",
@@ -751,15 +676,9 @@
     "| Early Stopping | Subset of X_train | No Leakage |\n",
     "| Threshold selection | Validation (from X_train) | No Leakage |\n",
     "| Final metrics | X_test (once, last) | No Leakage |"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s7-split-code",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+nb["cells"].append(code("s7-split-code", [
     "RANDOM_STATE = 42\n",
     "\n",
     "print('\\n[2] Stratified Train/Test split (80/20) ...')\n",
@@ -792,36 +711,26 @@
     "overlap = len(train_set.intersection(test_set))\n",
     "print(f'  Duplicate overlap (100k/10k sample): {overlap}')\n",
     "print(f'  -> {\"OK: Khong co overlap\" if overlap==0 else \"CANH BAO!\"}  |  Duplicate overlap = {overlap}')"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s7-split-comment",
-   "metadata": {},
-   "source": [
+]))
+
+nb["cells"].append(md("s7-split-comment", [
     "*Nhan xet*:\n",
     "1. **Phan chia thanh cong**: 4,000,000 Train / 1,000,000 Test, Unassigned=0, Coverage=100%.\n",
     "2. **Ti le nhan bao toan**: Stratified split giu pos rate nhu nhau ca 2 tap.\n",
     "3. **Duplicate overlap = 0**: Khong co data leakage giua Train va Test."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s8-train-header",
-   "metadata": {},
-   "source": [
+]))
+
+# ============================================================
+# SECTION 8: Training
+# ============================================================
+nb["cells"].append(md("s8-train-header", [
     "## 8. HUAN LUYEN MO HINH\n",
     "\n",
-    "Huan luyen tren **toan bo 4,000,000 mau X_train**. Early Stopping dung tren Validation noi bo (10% X_train) - khong dung X_test."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s8-config-code",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+    "Huan luyen tren **toan bo 4,000,000 mau X_train**. "
+    "Early Stopping dung tren Validation noi bo (10% X_train) - khong dung X_test."
+]))
+
+nb["cells"].append(code("s8-config-code", [
     "HGB_CONFIG = {\n",
     "    'n_estimators'      : 200,\n",
     "    'learning_rate'     : 0.1,\n",
@@ -841,15 +750,9 @@
     "print('    ' + '-'*50)\n",
     "for k,v in HGB_CONFIG.items(): print(f'    {k:<22} = {v}')\n",
     "print('    ' + '-'*50)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s8-fit-code",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+nb["cells"].append(code("s8-fit-code", [
     "t_gs = 0.0\n",
     "if GRID_SEARCH_ENABLED:\n",
     "    SZ = 60_000\n",
@@ -883,35 +786,25 @@
     "print(f'  Trees built (stopped at): {model.n_iter_}')\n",
     "print(f'  Best iteration (pruned) : {model.best_n_iter_}')\n",
     "print(f'  Best validation loss    : {model.best_val_loss_:.5f}')"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s8-train-comment",
-   "metadata": {},
-   "source": [
+]))
+
+nb["cells"].append(md("s8-train-comment", [
     "*Nhan xet*:\n",
     "- Mo hinh HGB tu xay dung huan luyen thanh cong tren **4,000,000 mau X_train**.\n",
     "- Early Stopping tren 10% val subset cua X_train - **khong cham X_test**."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s9-thr-header",
-   "metadata": {},
-   "source": [
+]))
+
+# ============================================================
+# SECTION 9: Threshold Selection
+# ============================================================
+nb["cells"].append(md("s9-thr-header", [
     "## 9. CHON NGUONG PHAN LOAI (THRESHOLD) - TREN VALIDATION SET\n",
     "\n",
-    "Threshold duoc chon tren **Validation set (subset cua X_train)**, **KHONG dua tren Test set** de tranh Data Leakage."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s9-thr-code",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+    "Threshold duoc chon tren **Validation set (subset cua X_train)**, "
+    "**KHONG dua tren Test set** de tranh Data Leakage."
+]))
+
+nb["cells"].append(code("s9-thr-code", [
     "VAL_SIZE = 100_000\n",
     "vi = np.random.RandomState(RANDOM_STATE+1).choice(X_train.shape[0], VAL_SIZE, replace=False)\n",
     "Xvt, yvt = X_train[vi], y_train[vi]\n",
@@ -931,33 +824,24 @@
     "BEST_THRESHOLD = max(sw, key=lambda t: sw[t]['f1'])\n",
     "print(f'\\n  -> Threshold tot nhat (max F1 tren Validation): {BEST_THRESHOLD:.2f}')\n",
     "print(f'  -> Se dung threshold nay cho danh gia cuoi tren Test set.')"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s9-thr-comment",
-   "metadata": {},
-   "source": [
-    "*Nhan xet*: Threshold duoc chon dua tren Validation (subset X_train). **Test set HOAN TOAN khong duoc su dung** trong buoc nay - tranh optimistic bias."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s10-eval-header",
-   "metadata": {},
-   "source": [
+]))
+
+nb["cells"].append(md("s9-thr-comment", [
+    "*Nhan xet*: Threshold duoc chon dua tren Validation (subset X_train). "
+    "**Test set HOAN TOAN khong duoc su dung** trong buoc nay - tranh optimistic bias."
+]))
+
+# ============================================================
+# SECTION 10: Evaluation
+# ============================================================
+nb["cells"].append(md("s10-eval-header", [
     "## 10. DANH GIA MO HINH TREN TEST SET (1,000,000 MAU)\n",
     "\n",
-    "Day la buoc **duy nhat** su dung Test set. Test set duoc giu untouched tu dau den buoc nay."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s10-eval-code",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+    "Day la buoc **duy nhat** su dung Test set. "
+    "Test set duoc giu untouched tu dau den buoc nay."
+]))
+
+nb["cells"].append(code("s10-eval-code", [
     "print(f'\\n[6] Danh gia cuoi tren Test set ({X_test.shape[0]:,} mau, threshold={BEST_THRESHOLD:.2f}) ...')\n",
     "yp_test = model.predict_proba(X_test)\n",
     "yd_test = (yp_test >= BEST_THRESHOLD).astype(int)\n",
@@ -992,31 +876,21 @@
     "print(f'  {\"-\"*65}')\n",
     "print(f'  {\"Thuc te: Background\":<26}| TN={tn:8,} ({tn/tot*100:5.1f}%)  | FP={fp:6,} ({fp/tot*100:5.1f}%)')\n",
     "print(f'  {\"Thuc te: SUSY\":<26}| FN={fn:8,} ({fn/tot*100:5.1f}%)  | TP={tp:6,} ({tp/tot*100:5.1f}%)')"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s10-eval-comment",
-   "metadata": {},
-   "source": [
-    "*Nhan xet*: Mo hinh HGB dat hieu nang tot tren 1,000,000 mau Test hoan toan unseen. Day la lan **duy nhat** Test set duoc su dung."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s11-roc-header",
-   "metadata": {},
-   "source": [
+]))
+
+nb["cells"].append(md("s10-eval-comment", [
+    "*Nhan xet*: Mo hinh HGB dat hieu nang tot tren 1,000,000 mau Test hoan toan unseen. "
+    "Day la lan **duy nhat** Test set duoc su dung."
+]))
+
+# ============================================================
+# SECTION 11: ROC & Verification
+# ============================================================
+nb["cells"].append(md("s11-roc-header", [
     "## 11. DUONG CONG ROC & KIEM CHUNG VOI SKLEARN"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s11-roc-code",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+nb["cells"].append(code("s11-roc-code", [
     "fpr, tpr, _ = compute_roc_curve(y_test, yp_test)\n",
     "fig, axes = plt.subplots(1, 2, figsize=(14, 5))\n",
     "axes[0].plot(fpr, tpr, 'darkorange', lw=2, label=f'Custom HGB (AUC={auc:.4f})')\n",
@@ -1044,37 +918,26 @@
     "    print('  [OK] Custom metrics khop voi sklearn - trien khai chinh xac!')\n",
     "except ImportError:\n",
     "    print('  [INFO] sklearn khong co san - bo qua kiem chung.')"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s11-roc-comment",
-   "metadata": {},
-   "source": [
+]))
+
+nb["cells"].append(md("s11-roc-comment", [
     "*Nhan xet*:\n",
     "1. ROC Curve chung to kha nang phan tach tot giua SUSY va Background.\n",
     "2. Loss History xac nhan Early Stopping: val_loss tang sau best iteration.\n",
     "3. Custom metrics khop chinh xac voi sklearn - chung minh trien khai thuan NumPy dung."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s12-fi-header",
-   "metadata": {},
-   "source": [
+]))
+
+# ============================================================
+# SECTION 12: Feature Importances
+# ============================================================
+nb["cells"].append(md("s12-fi-header", [
     "## 12. DAC TRUNG QUAN TRONG (FEATURE IMPORTANCES)\n",
     "\n",
     "1. **Gain**: Tong do loi phan tach tich luy qua tat ca cay.\n",
     "2. **Permutation**: Giam AUC khi xao tron tung dac trung tren Test set."
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s12-fi-table",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+nb["cells"].append(code("s12-fi-table", [
     "imps = model.feature_importances_\n",
     "si   = np.argsort(imps)[::-1]\n",
     "\n",
@@ -1096,15 +959,9 @@
     "    p  = pi[idx]; pr = int(np.where(ps==idx)[0][0])+1\n",
     "    print(f'  {r:3d} | {fn:<18} | {g*100:6.2f}% | #{pr:<5} | {p:+.5f}')\n",
     "print(f'  {\"=\"*55}')"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s12-fi-plot",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+nb["cells"].append(code("s12-fi-plot", [
     "fig, ax = plt.subplots(1, 2, figsize=(16, 6))\n",
     "tf = [FEATURE_NAMES[i] for i in si]\n",
     "ax[0].barh(range(len(si)), imps[si[::-1]]*100, color='darkorange')\n",
@@ -1116,34 +973,21 @@
     "ax[1].set(xlabel='Delta AUC', title='Feature Importance - Permutation'); ax[1].grid(alpha=0.3, axis='x')\n",
     "plt.suptitle('Feature Importances: Gain vs Permutation', fontsize=13, y=1.02)\n",
     "plt.tight_layout(); plt.show()"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s12-fi-comment",
-   "metadata": {},
-   "source": [
+]))
+
+nb["cells"].append(md("s12-fi-comment", [
     "*Nhan xet*:\n",
     "1. Gain Importance phan anh contribution trong training.\n",
     "2. Permutation Importance do tac dong thuc te - doc lap voi cau truc mo hinh.\n",
     "3. High-level features (M_R, MT2, S_R) thuong xep top ca 2 bang."
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s13-diag-header",
-   "metadata": {},
-   "source": [
-    "## 13. TRAINING DIAGNOSTICS & LUU BAO CAO"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "s13-diag-code",
-   "metadata": {},
-   "outputs": [],
-   "source": [
+]))
+
+# ============================================================
+# SECTION 13: Diagnostics & Save
+# ============================================================
+nb["cells"].append(md("s13-diag-header", ["## 13. TRAINING DIAGNOSTICS & LUU BAO CAO"]))
+
+nb["cells"].append(code("s13-diag-code", [
     "print('\\n' + '='*65)\n",
     "print('   TRAINING DIAGNOSTICS')\n",
     "print('='*65)\n",
@@ -1175,18 +1019,18 @@
     "    f.write(f'  python: {sys.version.split()[0]}\\n')\n",
     "    f.write(f'  numpy: {np.__version__}\\n')\n",
     "print(f'\\n[OK] Bao cao luu vao: {rpath}')"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "id": "s14-conclusion",
-   "metadata": {},
-   "source": [
+]))
+
+# ============================================================
+# SECTION 14: Conclusion
+# ============================================================
+nb["cells"].append(md("s14-conclusion", [
     "## 14. KET LUAN\n",
     "\n",
     "### Tom tat ket qua\n",
     "\n",
-    "Du an da thanh cong xay dung **Histogram Gradient Boosting (HGB)** tu dau bang **thuan NumPy — Zero Scikit-Learn** tren SUSY Dataset (5,000,000 mau).\n",
+    "Du an da thanh cong xay dung **Histogram Gradient Boosting (HGB)** tu dau bang "
+    "**thuan NumPy — Zero Scikit-Learn** tren SUSY Dataset (5,000,000 mau).\n",
     "\n",
     "### Cac diem chung minh duoc:\n",
     "\n",
@@ -1204,21 +1048,13 @@
     "| Git commit + environment ghi lai | `git rev-parse HEAD` | **Dat** |\n",
     "\n",
     "### Ket luan\n",
-    "Thuat toan HGB tu xay dung chung minh rang voi thiet ke dung dan ve Data Pipeline va Leakage Prevention, mot mo hinh thuan NumPy co the dat ket qua canh tranh, dong thoi dam bao tinh minh bach va kiem chung duoc."
-   ]
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python 3",
-   "language": "python",
-   "name": "python3"
-  },
-  "language_info": {
-   "name": "python",
-   "version": "3.11.0"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+    "Thuat toan HGB tu xay dung chung minh rang voi thiet ke dung dan ve Data Pipeline va Leakage Prevention, "
+    "mot mo hinh thuan NumPy co the dat ket qua canh tranh, dong thoi dam bao tinh minh bach va kiem chung duoc."
+]))
+
+# Save notebook
+out_path = r'c:/Users/ACER/Downloads/New folder (3)/HGB/notebook.ipynb'
+with open(out_path, 'w', encoding='utf-8') as f:
+    json.dump(nb, f, ensure_ascii=False, indent=1)
+print(f'notebook.ipynb da duoc tao thanh cong tai: {out_path}')
+print(f'Tong so cells: {len(nb["cells"])}')
