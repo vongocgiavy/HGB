@@ -615,6 +615,7 @@ class CustomHistGradientBoostingClassifier:
         self.val_loss_history_         = []
         self.full_train_loss_history_  = []   # lịch sử đầy đủ đến khi early-stop (trước khi trim)
         self.full_val_loss_history_    = []   # lịch sử đầy đủ đến khi early-stop (trước khi trim)
+        self.fit_time_                 = 0.0  # thời gian huấn luyện thực tế (giây) của mô hình này
 
     def _validate_params(self):
         """Kiem tra tinh hop le cua toan bo sieu tham so mo hinh."""
@@ -863,6 +864,7 @@ class CustomHistGradientBoostingClassifier:
             self.val_loss_history_   = self.val_loss_history_[:self.best_n_iter_]
         self.n_iter_ = len(self.trees)
         elapsed = time.time() - t0
+        self.fit_time_ = float(elapsed)
 
         # Bước 4: Tính Feature Importances (Gain-based) tích lũy trên toàn bộ cây
         raw_importances = np.zeros(self.n_features_in_, dtype=np.float64)
@@ -1246,14 +1248,16 @@ class CustomGridSearchCV:
         if self.refit:
             if self.verbose >= 1:
                 print(f"[*] Dang huan luyen lai (refit) best_estimator_ tren toan bo du lieu {X_arr.shape[0]:,} mau...")
-            t_refit_start = time.time()
             best_model = copy.deepcopy(self.estimator)
             best_model.set_params(**self.best_params_)
-            best_model.fit(X_arr, y_arr, verbose=(self.verbose >= 2))
-            self.refit_time_ = float(time.time() - t_refit_start)
+            best_model.fit(X_arr, y_arr, verbose=(self.verbose >= 1))
+            self.refit_time_ = float(best_model.fit_time_)
             self.best_estimator_ = best_model
             if self.verbose >= 1:
-                print(f"[*] Huan luyen lai hoan tat trong {self.refit_time_:.2f}s! Mo hinh da san sang du doan.\n")
+                n_trees = len(best_model.trees)
+                per_tree = self.refit_time_ / max(n_trees, 1)
+                print(f"[*] Huan luyen lai (refit) hoan tat trong {self.refit_time_:.2f}s "
+                      f"({n_trees} cay, {per_tree:.3f}s/cay)! Mo hinh da san sang du doan.\n")
 
         return self
 

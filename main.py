@@ -340,6 +340,7 @@ def main():
     print(SEP)
     if args.grid_search:
         n_combos = len(gs.cv_results_.get('params', []))
+        t_refit = getattr(model, "fit_time_", t_refit)
         print(f"  Che do huan luyen         : Grid Search ({n_combos} to hop x {args.cv_folds} folds) + Refit")
         print(f"  Max estimators configured : {model.n_estimators} (Best Model)")
         print(f"  Trees built (stopped at)  : {stopped}")
@@ -348,6 +349,7 @@ def main():
         print(f"  Grid Search total time    : {t_grid_search:.2f}s ({n_combos * args.cv_folds} fits)")
         print(f"  Best model refit time     : {t_refit:.2f}s ({t_refit/max(stopped, 1):.3f}s/tree)")
     else:
+        t_train = getattr(model, "fit_time_", t_train)
         print(f"  Che do huan luyen         : Single Fit (Manual Configuration)")
         print(f"  Max estimators configured : {args.n_estimators}")
         print(f"  Trees built (stopped at)  : {stopped}")
@@ -367,17 +369,17 @@ def main():
         f.write(f"Data    : SUSY.csv  {nrows_str} rows  "
                 f"Train={X_train.shape[0]:,}  Test={X_test.shape[0]:,}\n")
         f.write(f"Model   : Histogram Gradient Boosting (Zero Scikit-Learn)\n")
-        f.write(f"Mode    : {'Grid Search (Best Estimator)' if args.grid_search else 'Single Fit'}\n")
+        f.write(f"Mode    : {'Grid Search (Best Estimator Refit)' if args.grid_search else 'Single Fit'}\n")
         f.write(f"Seed    : {args.random_state}\n\n")
-        f.write("[HYPERPARAMETERS EVALUATED]:\n")
+        f.write("[FINAL MODEL CONFIGURATION]:\n")
         for k, v in active_config.items():
             f.write(f"  {k:<22}: {v}\n")
         if args.grid_search:
             f.write(f"\n[GRID SEARCH METADATA]:\n")
             f.write(f"  Best Params Found     : {gs.best_params_}\n")
             f.write(f"  Best CV {gs.scoring} Score : {gs.best_score_:.4f}\n")
-            f.write(f"  Total Search Time     : {t_grid_search:.2f}s\n")
-            f.write(f"  Best Model Refit Time : {t_refit:.2f}s\n")
+            f.write(f"  Total Search Time     : {t_grid_search:.2f}s ({n_combos * args.cv_folds} fits)\n")
+            f.write(f"  Best Model Refit Time : {t_refit:.2f}s ({t_refit/max(stopped, 1):.3f}s/tree)\n")
         f.write("\n[TEST SET METRICS]:\n")
         for name, val, _ in metrics:
             f.write(f"  {name:<14}: {val:.4f}\n")
