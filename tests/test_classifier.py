@@ -82,6 +82,18 @@ class TestClassifier(unittest.TestCase):
         with self.assertRaises(ValueError):
             CustomHistGradientBoostingClassifier(validation_fraction=1.0)
 
+    def test_invalid_fit_input_and_threshold(self):
+        clf = CustomHistGradientBoostingClassifier(validation_fraction=0.0)
+        X = np.ones((10, 3), dtype=np.float32)
+        y = np.array([0, 1] * 5, dtype=np.float32)
+
+        with self.assertRaises(ValueError):
+            clf.fit(X, y[:-1])
+
+        clf.fit(X, y)
+        with self.assertRaises(ValueError):
+            clf.predict(X, threshold=np.nan)
+
 
 if __name__ == '__main__':
     unittest.main()

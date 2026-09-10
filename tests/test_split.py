@@ -51,6 +51,12 @@ class TestSplit(unittest.TestCase):
         with self.assertRaises(ValueError):
             train_test_split_stratified(X, np.zeros(10))
 
+        with self.assertRaises(ValueError):
+            train_test_split_stratified(X, np.array([0, 1] * 4))
+
+        with self.assertRaises(ValueError):
+            train_test_split_stratified(np.ones((9, 2)), y)
+
 
 if __name__ == '__main__':
     unittest.main()

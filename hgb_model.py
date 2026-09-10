@@ -44,18 +44,36 @@ def train_test_split_stratified(X, y, test_size=0.2, random_state=42, return_ind
     if not (0.0 < test_size < 1.0):
         raise ValueError(f"test_size phai nam trong khoang (0.0, 1.0). Nhan duoc: {test_size}")
 
-    rng = np.random.RandomState(random_state)
+    if hasattr(X, 'values'):
+        X_arr = np.asarray(X.values)
+    else:
+        X_arr = np.asarray(X)
+    if X_arr.ndim != 2:
+        raise ValueError(f"X phai la ma tran 2 chieu. Nhan duoc shape: {X_arr.shape}.")
+
     y_arr = np.asarray(y).ravel()
+    if X_arr.shape[0] != len(y_arr):
+        raise ValueError(
+            f"So mau khong khop: X co {X_arr.shape[0]} dong, y co {len(y_arr)} nhan."
+        )
+    if not np.all(np.isin(y_arr, [0, 1])):
+        raise ValueError(f"y phai la nhan nhi phan {{0, 1}}. Nhan duoc: {np.unique(y_arr).tolist()}")
 
     classes = np.unique(y_arr)
     if len(classes) < 2:
         raise ValueError(f"y phai chua it nhat 2 lop nhan. Nhan duoc: {classes.tolist()}")
 
+    rng = np.random.RandomState(random_state)
     train_idx, test_idx = [], []
     for cls in classes:
         cls_indices = np.where(y_arr == cls)[0].copy()
         rng.shuffle(cls_indices)
         n_test = int(np.round(len(cls_indices) * test_size))
+        if not (0 < n_test < len(cls_indices)):
+            raise ValueError(
+                f"Lop {cls} co {len(cls_indices)} mau, khong the chia phan tang voi "
+                f"test_size={test_size}. Moi lop phai co mau o ca train va test."
+            )
         test_idx.extend(cls_indices[:n_test])
         train_idx.extend(cls_indices[n_test:])
 
@@ -64,12 +82,7 @@ def train_test_split_stratified(X, y, test_size=0.2, random_state=42, return_ind
     rng.shuffle(train_idx)
     rng.shuffle(test_idx)
 
-    if hasattr(X, 'iloc'):
-        X_train = X.iloc[train_idx].values
-        X_test  = X.iloc[test_idx].values
-    else:
-        X_arr = np.asarray(X)
-        X_train, X_test = X_arr[train_idx], X_arr[test_idx]
+    X_train, X_test = X_arr[train_idx], X_arr[test_idx]
 
     if return_indices:
         return X_train, X_test, y_arr[train_idx], y_arr[test_idx], train_idx, test_idx
@@ -200,6 +213,8 @@ def compute_roc_curve(y_true, y_scores, drop_intermediate: bool = True):
 
     if len(y_t) != len(scores):
         raise ValueError(f"Kich thuoc khong khop: y_true ({len(y_t)}) != y_scores ({len(scores)}).")
+    if len(y_t) == 0:
+        raise ValueError("y_true va y_scores khong duoc rong.")
     if not np.all(np.isin(y_t, [0, 1])):
         raise ValueError("y_true phai la nhan nhi phan {0, 1}.")
     if not np.isfinite(scores).all():
@@ -243,6 +258,8 @@ def compute_precision_recall_curve(y_true, y_scores):
 
     if len(y_t) != len(scores):
         raise ValueError(f"Kich thuoc khong khop: y_true ({len(y_t)}) != y_scores ({len(scores)}).")
+    if len(y_t) == 0:
+        raise ValueError("y_true va y_scores khong duoc rong.")
     if not np.all(np.isin(y_t, [0, 1])):
         raise ValueError("y_true phai la nhan nhi phan {0, 1}.")
     if not np.isfinite(scores).all():
@@ -301,6 +318,8 @@ class HistBinMapper:
         if hasattr(X, 'values'):
             X = X.values
         X = np.asarray(X, dtype=np.float32)
+        if X.ndim != 2 or X.shape[0] == 0 or X.shape[1] == 0:
+            raise ValueError(f"X phai la ma tran 2 chieu khong rong. Nhan duoc shape: {X.shape}.")
         if not np.isfinite(X).all():
             raise ValueError("Du lieu X chua gia tri khong hop le (NaN hoac +/-Inf).")
 
@@ -350,6 +369,8 @@ class HistBinMapper:
         if hasattr(X, 'values'):
             X = X.values
         X = np.asarray(X, dtype=np.float32)
+        if X.ndim != 2:
+            raise ValueError(f"X phai la ma tran 2 chieu. Nhan duoc shape: {X.shape}.")
         if X.shape[1] != self.n_features_in_:
             raise ValueError(
                 f"So dac trung khong khop: fit voi {self.n_features_in_} cot, "
@@ -702,13 +723,19 @@ class CustomHistGradientBoostingClassifier:
 
         self._validate_params()
 
+        if X.ndim != 2 or X.shape[0] == 0 or X.shape[1] == 0:
+            raise ValueError(f"X phai la ma tran 2 chieu khong rong. Nhan duoc shape: {X.shape}.")
+        if X.shape[0] != len(y):
+            raise ValueError(
+                f"So mau khong khop: X co {X.shape[0]} dong, y co {len(y)} nhan."
+            )
         if not np.isfinite(X).all():
             raise ValueError("Du lieu X chua gia tri khong hop le (NaN hoac +/-Inf).")
         if not np.isfinite(y).all():
             raise ValueError("Nhan y chua gia tri khong hop le (NaN hoac +/-Inf).")
 
         unique_y = np.unique(y)
-        if not np.all(np.isin(unique_y, [0, 1])):
+        if len(unique_y) != 2 or not np.all(np.isin(unique_y, [0, 1])):
             raise ValueError(f"CustomHistGradientBoostingClassifier chi ho tro nhan {{0, 1}}. Nhan: {unique_y.tolist()}")
 
         self.n_features_in_ = X.shape[1]
@@ -832,6 +859,8 @@ class CustomHistGradientBoostingClassifier:
             X = X.values
         X = np.asarray(X, dtype=np.float32)
 
+        if X.ndim != 2:
+            raise ValueError(f"X phai la ma tran 2 chieu. Nhan duoc shape: {X.shape}.")
         if X.shape[1] != self.n_features_in_:
             raise ValueError(f"So dac trung khong khop: fit {self.n_features_in_}, predict {X.shape[1]}.")
         if not np.isfinite(X).all():
@@ -851,6 +880,12 @@ class CustomHistGradientBoostingClassifier:
         return np.column_stack([1.0 - p1, p1])
 
     def predict(self, X, threshold: float = 0.50) -> np.ndarray:
+        try:
+            threshold = float(threshold)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("threshold phai la so thuc trong khoang [0, 1].") from exc
+        if not np.isfinite(threshold) or not 0.0 <= threshold <= 1.0:
+            raise ValueError(f"threshold phai nam trong khoang [0, 1]. Nhan duoc: {threshold}.")
         return (self.predict_proba(X) >= threshold).astype(int)
 
     def score(self, X, y) -> float:

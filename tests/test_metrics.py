@@ -73,6 +73,12 @@ class TestMetrics(unittest.TestCase):
         with self.assertRaises(ValueError):
             compute_roc_auc([1, 0, 1], [0.5, 0.5])
 
+        with self.assertRaises(ValueError):
+            compute_roc_curve([], [])
+
+        with self.assertRaises(ValueError):
+            compute_precision_recall_curve([], [])
+
 
 if __name__ == '__main__':
     unittest.main()

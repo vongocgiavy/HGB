@@ -93,6 +93,16 @@ def parse_arguments():
 
 def main():
     args = parse_arguments()
+    if args.nrows is not None and args.nrows <= 0:
+        raise ValueError("--nrows phai la so nguyen duong.")
+    # Pipeline nay bat buoc co validation de early stopping va khoa threshold
+    # truoc khi danh gia tren test set.
+    if not (0.0 < args.validation_fraction < 1.0):
+        raise ValueError("--validation_fraction phai nam trong khoang (0, 1) cho pipeline nay.")
+    if args.n_iter_no_change <= 0:
+        raise ValueError("--n_iter_no_change phai > 0 khi pipeline dung validation.")
+    if args.grid_search and args.cv_folds < 2:
+        raise ValueError("--cv_folds phai >= 2 khi dung --grid_search.")
 
     print()
     print(SEP)
@@ -514,9 +524,36 @@ def main():
         "Val_Loss": dev_model.full_val_loss_history_
     }).to_csv(os.path.join(outputs_dir, "training_history.csv"), index=False)
 
-    # config.json
+    # config.json: luu ca cau hinh development, refit va cac gia tri da chon
+    # de co the tai lap toan bo pipeline thay vi chi tai lap model co so.
+    config_json_data = {
+        **hgb_config,
+        "run": {
+            "full_dataset": bool(args.full),
+            "nrows": nrows_to_load,
+        },
+        "data_split": {
+            "test_size": 0.2,
+            "random_state": args.random_state,
+        },
+        "development": {
+            "validation_fraction": args.validation_fraction,
+            "n_iter_no_change": args.n_iter_no_change,
+            "tol": args.tol,
+        },
+        "selection": {
+            "best_threshold": float(best_threshold),
+            "best_iteration": int(best_n_iter),
+        },
+        "final_refit": final_config,
+        "grid_search": {
+            "enabled": bool(args.grid_search),
+            "cv_folds": args.cv_folds,
+            "metadata": gs_metadata,
+        },
+    }
     with open(os.path.join(outputs_dir, "config.json"), "w", encoding="utf-8") as f:
-        json.dump(hgb_config, f, indent=2)
+        json.dump(config_json_data, f, indent=2)
 
     # environment.json
     with open(os.path.join(outputs_dir, "environment.json"), "w", encoding="utf-8") as f:
