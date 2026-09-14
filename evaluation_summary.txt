@@ -3,46 +3,46 @@
 ==============================================================================
 
 [DATASET]
-  Total samples           : 1,000
-  Train samples           : 800
-  Internal train samples  : 720
-  Validation samples      : 80
-  Test samples            : 200
+  Total samples           : 60,000
+  Train samples           : 48,000
+  Internal train samples  : 43,200
+  Validation samples      : 4,800
+  Test samples            : 12,000
   Unassigned samples      : 0
   Coverage                : 100.00%
 
 [HYPERPARAMETERS]
-  n_estimators            : 5
+  n_estimators            : 200
   learning_rate           : 0.1
   max_depth               : 6
   min_samples_leaf        : 20
   l2_regularization       : 1.0
   max_bins                : 255
-  min_gain_to_split       : 1e-07
+  min_gain_to_split       : 0.001
   random_state            : 42
 
 [TRAINING]
-  Trees built (Phase 1)   : 5
-  Best iteration          : 5
-  Best validation loss    : 0.57728
-  Phase 1 Dev train time  : 0.04s
-  Phase 2 Final train time: 0.04s (Full 800 samples)
+  Trees built (Phase 1)   : 94
+  Best iteration          : 74
+  Best validation loss    : 0.45525
+  Phase 1 Dev train time  : 14.41s
+  Phase 2 Final train time: 12.10s (Full 48,000 samples)
 
 [THRESHOLD]
-  Best threshold          : 0.50
-  Threshold selection     : Validation Set only (Max F1 = 72.73%)
+  Best threshold          : 0.40
+  Threshold selection     : Validation Set only (Max F1 = 76.52%)
 
 [FINAL TEST METRICS]
-  Accuracy                : 75.50%
-  Precision               : 82.26%
-  Recall                  : 57.30%
-  Specificity             : 90.09%
-  NPV                     : 72.46%
-  F1-Score                : 67.55%
-  ROC-AUC                 : 0.7774
+  Accuracy                : 79.26%
+  Precision               : 76.70%
+  Recall                  : 79.12%
+  Specificity             : 79.38%
+  NPV                     : 81.59%
+  F1-Score                : 77.89%
+  ROC-AUC                 : 0.8767
 
 [CONFUSION MATRIX]
-  TN = 100  FP = 11  FN = 38  TP = 51 (Total = 200)
+  TN = 5,127  FP = 1,332  FN = 1,157  TP = 4,384 (Total = 12,000)
 
 [DATA LEAKAGE AUDIT]
   Status                  : PASSED (14/14 checks)
@@ -51,4 +51,4 @@
   Python                  : 3.13.5
   NumPy                   : 2.3.2
   Pandas                  : 2.3.1
-  Git commit              : da720b15c8326e9af7f1737decb4f0ecdda3f5f2
+  Git commit              : b75f5196431ca59e54e91c17ed9183eeb393c2e8

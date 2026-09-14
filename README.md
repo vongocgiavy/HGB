@@ -169,16 +169,29 @@ Tất cả các thành phần trong `hgb_model.py` đều được viết độc
 
 ## 7. Hướng dẫn Sử dụng Dòng lệnh (CLI) & Kiểm thử
 
-### 7.1 Chạy bộ Unit Test tự động (25 Tests)
+### 7.1 Chạy bộ Unit Test tự động (26 Tests)
 Bộ unit test kiểm tra toàn diện tính toàn vẹn toán học, tính ổn định số, và ranh giới cách ly dữ liệu:
 ```bash
 python -m unittest discover tests
 ```
 
-### 7.2 Chạy thử nghiệm nhanh (Quick Smoke Test)
-Chạy kiểm thử đường ống trên 60,000 mẫu để xác nhận toàn bộ quy trình 2-Phase hoạt động bình thường:
+### 7.2 Chạy thử nghiệm nhanh (Quick Smoke Test - 60,000 mẫu)
+Chạy kiểm thử đường ống trên 60,000 mẫu (Train = 48,000, Test = 12,000) để xác nhận toàn bộ quy trình 2-Phase:
 ```bash
 python main.py --nrows 60000
+```
+Hỗ trợ các cờ siêu tham số tùy biến (kèm bí danh ngắn gọn):
+- `--learning_rate`, `--lr` (mặc định: `0.1`)
+- `--max_depth` (mặc định: `6`)
+- `--min_samples_leaf` (mặc định: `20`)
+- `--l2_regularization`, `--l2_reg` (mặc định: `1.0`)
+- `--min_gain_to_split`, `--min_gain` (mặc định: `1e-3`)
+- `--n_iter_no_change`, `--patience` (mặc định: `20`)
+- `--threshold`: Chỉ định thủ công ngưỡng phân loại (mặc định: `None` -> tự động quét tìm $\tau^*$ tối đa hóa F1 trên Validation Set; phương thức `predict` có ngưỡng mặc định là `0.50`).
+
+Ví dụ chạy tùy biến:
+```bash
+python main.py --nrows 60000 --lr 0.08 --max_depth 8 --threshold 0.40
 ```
 
 ### 7.3 Chạy thử nghiệm đầy đủ trên toàn bộ 5,000,000 mẫu
@@ -188,7 +201,7 @@ python main.py --full
 
 ### 7.4 Chạy kết hợp tìm kiếm lưới siêu tham số (Grid Search)
 ```bash
-python main.py --full --grid_search
+python main.py --nrows 60000 --grid_search --cv_folds 3
 ```
 
 ### 7.5 Tái tạo Notebook Báo cáo Chuẩn 21 Bước Machine Learning
@@ -226,6 +239,32 @@ Dự án tích hợp hệ thống kiểm toán tự động gồm 14 tiêu chí 
 
 ## 9. Kết quả Thực nghiệm & Định dạng Xuất bản
 
+### 9.1 Bảng kết quả thực nghiệm chuẩn (Benchmark N=60,000 mẫu, Test=12,000 mẫu)
+Toàn bộ số liệu dưới đây được sinh tự động từ quá trình chạy thực tế `main.py --nrows 60000` (Zero Scikit-Learn, Zero Data Leakage):
+
+| Chỉ số đánh giá | Giá trị thực nghiệm | Ý nghĩa vật lý & nghiệp vụ |
+| :--- | :---: | :--- |
+| **Accuracy (Độ chính xác)** | **79.26%** | Tỷ lệ tổng thể các sự kiện được phân loại chính xác |
+| **Precision (Độ chuẩn xác)** | **76.70%** | Độ tin cậy khi mô hình dự báo là hạt SUSY |
+| **Recall / Sensitivity (Độ nhạy)** | **79.12%** | Tỷ lệ hạt SUSY thực tế được phát hiện thành công |
+| **Specificity (Độ đặc hiệu)** | **79.38%** | Khả năng loại trừ chính xác các va chạm nền SM |
+| **NPV (Negative Predictive Value)** | **81.59%** | Độ tin cậy khi mô hình xác nhận là biến cố nền |
+| **F1-Score (F1 hài hòa)** | **77.89%** | Trung bình điều hòa giữa Precision và Recall tại $\tau^* = 0.40$ |
+| **ROC-AUC** | **0.8767** | Năng lực phân tách xác suất độc lập với ngưỡng quyết định |
+| **Ngưỡng tối ưu $\tau^*$** | **0.40** | Được quét và khóa độc lập trên tập Validation nội bộ (mặc định class: 0.50) |
+
+**Ma trận nhầm lẫn trên tập Test ($N=12,000$ mẫu)**:
+- $\text{True Negatives (TN)}$: **5,127** (42.7%)
+- $\text{False Positives (FP)}$: **1,332** (11.1%) — FPR = 20.62%
+- $\text{False Negatives (FN)}$: **1,157** (9.6%) — FNR = 20.88%
+- $\text{True Positives (TP)}$: **4,384** (36.5%)
+
+**Xếp hạng đặc trưng hàng đầu**:
+1. `MET_magnitude` (Độ lớn năng lượng khuyết): Chiếm **50.25%** Gain, $\Delta\text{AUC} = +0.17861$
+2. `lepton1_pT` (Động lượng ngang lepton 1): Chiếm **22.39%** Gain, $\Delta\text{AUC} = +0.07882$
+3. `axial_MET` (Năng lượng khuyết dọc trục): Chiếm **5.69%** Gain, $\Delta\text{AUC} = +0.02225$
+
+### 9.2 Các tệp đầu ra trong thư mục `outputs/`
 Toàn bộ kết quả thực thi được tự động lưu có cấu trúc trong thư mục `outputs/`:
 - `outputs/metrics.json`: Báo cáo chỉ số toàn diện kèm metadata môi trường và Git commit.
 - `outputs/confusion_matrix.csv`: Bảng ma trận nhầm lẫn ($TP, TN, FP, FN$) và tỷ lệ phần trăm.
@@ -233,6 +272,7 @@ Toàn bộ kết quả thực thi được tự động lưu có cấu trúc tro
 - `outputs/feature_importance_gain.csv`: Xếp hạng đặc trưng theo độ lợi phân tách tích lũy.
 - `outputs/feature_importance_permutation.csv`: Xếp hạng đặc trưng theo độ nhạy suy giảm AUC trên Validation.
 - `outputs/training_history.csv`: Lịch sử hàm mất mát Log-Loss qua từng vòng lặp.
+- `outputs/loss_convergence.png`: Biểu đồ hội tụ hàm mất mát qua các vòng boosting.
 - `evaluation_summary.txt`: Báo cáo tóm tắt tổng quan dễ đọc.
 
 ---

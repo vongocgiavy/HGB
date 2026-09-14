@@ -76,15 +76,16 @@ def parse_arguments():
     p.add_argument("--full",              action="store_true", help="Chạy trên toàn bộ 5,000,000 mẫu")
     p.add_argument("--nrows",             type=int,   default=None, help="Số dòng chạy nhanh (ví dụ: 60000 cho smoke test)")
     p.add_argument("--n_estimators",      type=int,   default=200)
-    p.add_argument("--learning_rate",     type=float, default=0.1)
+    p.add_argument("--learning_rate", "--lr", type=float, default=0.1)
     p.add_argument("--max_depth",         type=int,   default=6)
     p.add_argument("--min_samples_leaf",  type=int,   default=20)
-    p.add_argument("--l2_regularization", type=float, default=1.0)
+    p.add_argument("--l2_regularization", "--l2_reg", type=float, default=1.0)
     p.add_argument("--max_bins",          type=int,   default=255)
-    p.add_argument("--min_gain_to_split", type=float, default=1e-7)
+    p.add_argument("--min_gain_to_split", "--min_gain", type=float, default=1e-3)
     p.add_argument("--validation_fraction", type=float, default=0.1)
-    p.add_argument("--n_iter_no_change",  type=int,   default=20)
+    p.add_argument("--n_iter_no_change", "--patience",  type=int,   default=20)
     p.add_argument("--tol",               type=float, default=1e-4)
+    p.add_argument("--threshold",         type=float, default=None, help="Ngưỡng phân loại chỉ định thủ công (nếu không set sẽ tự động quét tối ưu trên Val)")
     p.add_argument("--random_state",      type=int,   default=42)
     p.add_argument("--grid_search",       action="store_true", help="Bật tìm kiếm lưới siêu tham số trên tập train")
     p.add_argument("--cv_folds",          type=int,   default=3)
@@ -312,6 +313,9 @@ def main():
         print(f"  {th:9.2f} | {acc_v*100:8.2f}% | {prec_v*100:8.2f}% | {rec_v*100:8.2f}% | {f1_v*100:8.2f}% | {spec_v*100:10.2f}% | {npv_v*100:8.2f}%")
     print("  " + LINE)
     print(f"  [PASS] Best threshold selected by Validation F1 = {best_threshold:.2f} (F1 = {best_val_f1*100:.2f}%)")
+    if args.threshold is not None:
+        best_threshold = args.threshold
+        print(f"  [OVERRIDE] Using custom threshold from CLI: {best_threshold:.2f}")
 
     # Permutation Feature Importance ONLY on Validation Set
     val_auc = compute_roc_auc(y_val, p_val)

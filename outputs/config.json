@@ -1,15 +1,15 @@
 {
-  "n_estimators": 5,
+  "n_estimators": 200,
   "learning_rate": 0.1,
   "max_depth": 6,
   "min_samples_leaf": 20,
   "l2_regularization": 1.0,
   "max_bins": 255,
-  "min_gain_to_split": 1e-07,
+  "min_gain_to_split": 0.001,
   "random_state": 42,
   "run": {
     "full_dataset": false,
-    "nrows": 1000
+    "nrows": 60000
   },
   "data_split": {
     "test_size": 0.2,
@@ -21,17 +21,17 @@
     "tol": 0.0001
   },
   "selection": {
-    "best_threshold": 0.5,
-    "best_iteration": 5
+    "best_threshold": 0.4,
+    "best_iteration": 74
   },
   "final_refit": {
-    "n_estimators": 5,
+    "n_estimators": 74,
     "learning_rate": 0.1,
     "max_depth": 6,
     "min_samples_leaf": 20,
     "l2_regularization": 1.0,
     "max_bins": 255,
-    "min_gain_to_split": 1e-07,
+    "min_gain_to_split": 0.001,
     "random_state": 42,
     "validation_fraction": 0.0,
     "n_iter_no_change": 0
