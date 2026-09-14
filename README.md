@@ -7,12 +7,13 @@ Dự án nghiên cứu và triển khai hoàn chỉnh thuật toán **Histogram 
 ## Mục lục
 1. [Tổng quan Bài toán & Dữ liệu](#1-tổng-quan-bài-toán--dữ-liệu)
 2. [Cấu trúc Thư mục Dự án](#2-cấu-trúc-thư-mục-dự-án)
-3. [Cơ sở Lý thuyết & Toán học của Thuật toán HGB](#3-cơ-sở-lý-thuyết--toán-học-của-thuật-toán-hgb)
-4. [Quy trình Huấn luyện 2-Phase & Ngăn chặn Rò rỉ Dữ liệu](#4-quy-trình-huấn-luyện-2-phase--ngăn-chặn-rò-rỉ-dữ-liệu)
-5. [Chi tiết Kiến trúc Các Lớp & Hàm (Zero Scikit-Learn)](#5-chi-tiết-kiến-trúc-các-lớp--hàm-zero-scikit-learn)
-6. [Hướng dẫn Sử dụng Dòng lệnh (CLI) & Kiểm thử](#6-hướng-dẫn-sử-dụng-dòng-lệnh-cli--kiểm-thử)
-7. [Kiểm toán Rò rỉ Dữ liệu (Data Leakage Audit 14 Điểm)](#7-kiểm-toán-rò-rỉ-dữ-liệu-data-leakage-audit-14-điểm)
-8. [Kết quả Thực nghiệm & Định dạng Xuất bản](#8-kết-quả-thực-nghiệm--định-dạng-xuất-bản)
+3. [Quy trình 21 Bước Xây dựng Mô hình Machine Learning](#3-quy-trình-21-bước-xây-dựng-mô-hình-machine-learning)
+4. [Cơ sở Lý thuyết & Toán học của Thuật toán HGB](#4-cơ-sở-lý-thuyết--toán-học-của-thuật-toán-hgb)
+5. [Quy trình Huấn luyện 2-Phase & Ngăn chặn Rò rỉ Dữ liệu](#5-quy-trình-huấn-luyện-2-phase--ngăn-chặn-rò-rỉ-dữ-liệu)
+6. [Chi tiết Kiến trúc Các Lớp & Hàm (Zero Scikit-Learn)](#6-chi-tiết-kiến-trúc-các-lớp--hàm-zero-scikit-learn)
+7. [Hướng dẫn Sử dụng Dòng lệnh (CLI) & Kiểm thử](#7-hướng-dẫn-sử-dụng-dòng-lệnh-cli--kiểm-thử)
+8. [Kiểm toán Rò rỉ Dữ liệu (Data Leakage Audit 14 Điểm)](#8-kiểm-toán-rò-rỉ-dữ-liệu-data-leakage-audit-14-điểm)
+9. [Kết quả Thực nghiệm & Định dạng Xuất bản](#9-kết-quả-thực-nghiệm--định-dạng-xuất-bản)
 
 ---
 
@@ -37,11 +38,11 @@ Tập dữ liệu **SUSY** gồm **5,000,000 sự kiện va chạm** với **18 
 ```text
 HGB/
 ├── data/
-│   └── SUSY.csv                      # Tập dữ liệu 5 triệu dòng giải nén (~2.39 GB)
+│   └── SUSY.csv                      # Tập dữ liệu 5 triệu dòng (~2.39 GB) hoặc mẫu mô phỏng
 ├── hgb_model.py                      # Thư viện thuật toán cốt lõi 100% thuần Python/NumPy
 ├── main.py                           # Pipeline thực thi 2-Phase, kiểm thử và xuất kết quả qua CLI
-├── create_notebook.py                # Script tạo notebook.ipynb chuẩn 20 sections
-├── notebook.ipynb                    # Jupyter Notebook báo cáo trực quan, biểu đồ khoa học
+├── build_21_steps_notebook.py        # Script tạo notebook.ipynb chuẩn 21 bước Machine Learning
+├── notebook.ipynb                    # Jupyter Notebook triển khai trọn vẹn 21 bước Machine Learning
 ├── requirements.txt                  # Danh sách thư viện tối thiểu (numpy, pandas, matplotlib)
 ├── evaluation_summary.txt            # Báo cáo đánh giá tổng hợp
 ├── .gitignore                        # Cấu hình bỏ qua tệp nhị phân và dữ liệu lớn
@@ -54,21 +55,56 @@ HGB/
 │   ├── training_history.csv          # Lịch sử suy giảm hàm mất mát qua từng vòng boosting
 │   ├── config.json                   # Siêu tham số của mô hình
 │   └── environment.json              # Thông tin phần cứng, OS, Python, NumPy, Git commit
-└── tests/                            # Bộ unit test độc lập (Standard Python unittest)
-    ├── test_split.py                 # Kiểm thử phân chia phân tầng & kiểm toán overlap
-    ├── test_metrics.py               # Kiểm thử tính đúng đắn của toàn bộ bộ chỉ số NumPy
-    ├── test_binning.py               # Kiểm thử rời rạc hóa phân vị uint8 và phát hiện NaN/Inf
-    ├── test_tree.py                  # Kiểm thử xây dựng cây histogram và trọng số nút lá
-    ├── test_classifier.py            # Kiểm thử bộ phân loại HGB, early stopping, full refit
-    ├── test_leakage.py               # Kiểm thử ranh giới cách ly dữ liệu và chống Data Leakage
-    └── test_benchmark_optimization.py # Kiểm thử tối ưu hóa vector hóa C-level & tương đương số học
 ```
 
 ---
 
-## 3. Cơ sở Lý thuyết & Toán học của Thuật toán HGB
+## 3. Quy trình 21 Bước Xây dựng Mô hình Machine Learning
 
-### 3.1 Khai triển Taylor bậc 2 & Bước Newton-Raphson
+Dự án và tệp `notebook.ipynb` được thiết kế cấu trúc chặt chẽ theo **21 bước chuẩn mực**:
+
+```text
+Problem Definition ──> Domain Understanding ──> Data Cleaning ──> Feature Processing ──> Feature Engineering
+         │
+         ▼
+   Data Splitting ──> Baseline Model ──> Model Selection ──> Training (2-Phase) ──> Hyperparameter Tuning
+         │
+         ▼
+  Cross-Validation ──> Evaluation Metrics ──> Statistical Validation ──> Error Analysis
+         │
+         ▼
+  Model Interpretability ──> Iterative Improvement Cycle (Loop Back & Refine)
+```
+
+| STT | Tên bước chuẩn hóa | Nội dung triển khai trong dự án |
+| :---: | :--- | :--- |
+| **1** | **Xác định bài toán (Problem Definition)** | Phân loại sự kiện va chạm hạt SUSY tín hiệu ($y=1$) vs Nền chuẩn SM ($y=0$), 18 biến đầu vào. |
+| **2** | **Xác định bản chất bài toán ML** | Supervised Binary Classification trên Tabular Data, Offline Batch Training, Sub-millisecond Inference. |
+| **3** | **Khảo sát lĩnh vực & không gian dữ liệu** | Phân tích tri thức HEP: 8 biến động học cơ bản (Lepton $p_T, \eta, \phi$, $\text{MET}$) và 10 biến Razor bất biến khối lượng. |
+| **4** | **Khám phá và xử lý dữ liệu (EDA & Cleaning)** | Kiểm toán 0 NaN, 0 Inf, kiểm tra trùng lặp và xác nhận tỷ lệ lớp cân bằng tự nhiên (~45.8% vs 54.2%). |
+| **5** | **Chuẩn hóa đặc trưng (Feature Scaling)** | Phân tích tính chất Scale-invariant của cây; ứng dụng Quantile Binning (`HistBinMapper` 255 bins uint8). |
+| **6** | **Xử lý biến phân loại (Categorical Data)** | Kiểm tra kiểu dữ liệu: 100% đặc trưng là số thực liên tục (`float32`), không cần One-Hot Encoding. |
+| **7** | **Lựa chọn thuật toán & hàm mất mát** | Histogram Gradient Boosting tối ưu $O(D \cdot K)$, hàm mất mát Log-Loss, Gradient/Hessian bậc 2 và $L_2$ regularization. |
+| **8** | **Kỹ thuật tạo đặc trưng (Feature Engineering)** | Khảo sát tương tác vật lý: tỷ số $p_T$, chênh lệch góc mở $\Delta \phi$, tổng năng lượng vô hướng $H_T$. |
+| **9** | **Chia dữ liệu & kiểm soát Data Leakage** | Kiểm toán giao thoa chỉ mục (0 Overlap), độc lập tuyệt đối giữa Train, Validation và Test. |
+| **10** | **Lựa chọn phương pháp chia dữ liệu** | Áp dụng Stratified Split bảo toàn phân phối nhãn I.I.D trên cả Train (80%) và Test (20%). |
+| **11** | **Xây dựng mô hình cơ sở (Baseline Model)** | Thiết lập Dummy Majority Baseline (ROC-AUC=0.5) và Logistic Regression Baseline thuần NumPy (~0.78 ROC-AUC). |
+| **12** | **Nguyên lý No Free Lunch** | Biện minh khoa học: HGB vượt trội Linear về phi tuyến và vượt trội DNN về tốc độ/tài nguyên trên dữ liệu bảng. |
+| **13** | **Phân tích Bias và Variance** | Khảo sát đánh đổi Underfitting vs Overfitting; kiểm soát qua độ sâu cây (`max_depth=6`), $L_2$ penalty và Early Stopping. |
+| **14** | **Tối ưu siêu tham số (Tuning)** | `CustomGridSearchCV` thuần NumPy tìm kiếm bộ tham số tối ưu và ứng dụng Early Stopping tiết kiệm tính toán. |
+| **15** | **Lựa chọn & đánh giá Evaluation Metrics** | Đo lường toàn diện ROC-AUC, PR-AUC, F1; thuật toán quét ngưỡng (Threshold Tuning) trên Validation để khóa $T^*$. |
+| **16** | **Kiểm định chéo K-fold (Cross-Validation)** | `StratifiedKFold` ($K=3$) và `cross_val_score` thuần NumPy đánh giá độ ổn định $\mu \pm \sigma$. |
+| **17** | **Thực nghiệm huấn luyện mô hình** | Quy trình 2-Phase: Phase 1 Dev Model tìm `best_n_iter`; Phase 2 Full Refit trên 100% Train; Phase 3 Test duy nhất 1 lần. |
+| **18** | **Kiểm định thống kê độ tin cậy** | Bootstrapping 1,000 lần ước lượng Khoảng tin cậy 95% CI; chứng minh HGB vượt trội có ý nghĩa so với Baseline ($p < 0.001$). |
+| **19** | **Phân tích lỗi (Error Analysis)** | Bóc tách ma trận nhầm lẫn: phân tích False Positives, False Negatives và mẫu ranh giới không chắc chắn ($p \approx 0.5$). |
+| **20** | **Khả năng giải thích mô hình (Interpretability)** | Trực quan hóa Split Gain Importance và Permutation Importance; xác nhận biến `MET_magnitude` dẫn đầu độ quan trọng. |
+| **21** | **Chu trình lặp cải tiến mô hình** | Thiết lập vòng lặp phản hồi cải tiến liên tục: Đánh giá $\to$ Phân tích lỗi $\to$ Feature $\to$ Tối ưu $\to$ Triển khai. |
+
+---
+
+## 4. Cơ sở Lý thuyết & Toán học của Thuật toán HGB
+
+### 4.1 Khai triển Taylor bậc 2 & Bước Newton-Raphson
 Với bài toán phân loại nhị phân, hàm mất mát là Binary Cross-Entropy (Log-Loss):
 $$\mathcal{L}(y, F(x)) = - \Big[ y \ln(\sigma(F(x))) + (1 - y) \ln(1 - \sigma(F(x))) \Big]$$
 Trong đó xác suất dự đoán $p_i = \sigma(F(x_i)) = \frac{1}{1 + e^{-\text{clip}(F(x_i), -15, 15)}}$.
@@ -79,7 +115,7 @@ $$g_i = p_i - y_i, \quad h_i = p_i (1 - p_i)$$
 Trọng số tối ưu tại nút lá $j$ có điều chuẩn $L_2$ ($\lambda$):
 $$w_j^* = - \frac{\sum_{i \in I_j} g_i}{\sum_{i \in I_j} h_i + \lambda}$$
 
-### 3.2 Tối ưu hóa Tìm kiếm Điểm cắt $O(D \times K)$ qua Histogram
+### 4.2 Tối ưu hóa Tìm kiếm Điểm cắt $O(D \times K)$ qua Histogram
 1. **Rời rạc hóa phân vị (Quantile Binning)**: Ánh xạ ma trận $X$ liên tục thành ma trận số nguyên `uint8` ($K=255$ bins).
 2. **Xây dựng Histogram đơn vòng $O(N)$**:
    $$G_k = \sum_{i: x_{ij} \in \text{bin}_k} g_i, \quad H_k = \sum_{i: x_{ij} \in \text{bin}_k} h_i, \quad C_k = \sum_{i: x_{ij} \in \text{bin}_k} 1$$
@@ -89,7 +125,7 @@ $$w_j^* = - \frac{\sum_{i \in I_j} g_i}{\sum_{i \in I_j} h_i + \lambda}$$
 
 ---
 
-## 4. Quy trình Huấn luyện 2-Phase & Ngăn chặn Rò rỉ Dữ liệu
+## 5. Quy trình Huấn luyện 2-Phase & Ngăn chặn Rò rỉ Dữ liệu
 
 Dự án thiết kế cấu trúc phân bổ dữ liệu chặt chẽ nhằm triệt tiêu hoàn toàn rò rỉ thông tin (Data Leakage):
 
@@ -112,7 +148,7 @@ TỔNG DỮ LIỆU: 5,000,000 MẪU
 
 ---
 
-## 5. Chi tiết Kiến trúc Các Lớp & Hàm (Zero Scikit-Learn)
+## 6. Chi tiết Kiến trúc Các Lớp & Hàm (Zero Scikit-Learn)
 
 Tất cả các thành phần trong `hgb_model.py` đều được viết độc lập bằng NumPy:
 
@@ -131,38 +167,38 @@ Tất cả các thành phần trong `hgb_model.py` đều được viết độc
 
 ---
 
-## 6. Hướng dẫn Sử dụng Dòng lệnh (CLI) & Kiểm thử
+## 7. Hướng dẫn Sử dụng Dòng lệnh (CLI) & Kiểm thử
 
-### 6.1 Chạy bộ Unit Test tự động (25 Tests)
+### 7.1 Chạy bộ Unit Test tự động (25 Tests)
 Bộ unit test kiểm tra toàn diện tính toàn vẹn toán học, tính ổn định số, và ranh giới cách ly dữ liệu:
 ```bash
 python -m unittest discover tests
 ```
 
-### 6.2 Chạy thử nghiệm nhanh (Quick Smoke Test)
+### 7.2 Chạy thử nghiệm nhanh (Quick Smoke Test)
 Chạy kiểm thử đường ống trên 60,000 mẫu để xác nhận toàn bộ quy trình 2-Phase hoạt động bình thường:
 ```bash
 python main.py --nrows 60000
 ```
 
-### 6.3 Chạy thử nghiệm đầy đủ trên toàn bộ 5,000,000 mẫu
+### 7.3 Chạy thử nghiệm đầy đủ trên toàn bộ 5,000,000 mẫu
 ```bash
 python main.py --full
 ```
 
-### 6.4 Chạy kết hợp tìm kiếm lưới siêu tham số (Grid Search)
+### 7.4 Chạy kết hợp tìm kiếm lưới siêu tham số (Grid Search)
 ```bash
 python main.py --full --grid_search
 ```
 
-### 6.5 Tái tạo Notebook Báo cáo 20 Sections
+### 7.5 Tái tạo Notebook Báo cáo Chuẩn 21 Bước Machine Learning
 ```bash
-python create_notebook.py
+python build_21_steps_notebook.py
 ```
 
 ---
 
-## 7. Kiểm toán Rò rỉ Dữ liệu (Data Leakage Audit 14 Điểm)
+## 8. Kiểm toán Rò rỉ Dữ liệu (Data Leakage Audit 14 Điểm)
 
 Dự án tích hợp hệ thống kiểm toán tự động gồm 14 tiêu chí bắt buộc:
 
@@ -188,7 +224,7 @@ Dự án tích hợp hệ thống kiểm toán tự động gồm 14 tiêu chí 
 
 ---
 
-## 8. Kết quả Thực nghiệm & Định dạng Xuất bản
+## 9. Kết quả Thực nghiệm & Định dạng Xuất bản
 
 Toàn bộ kết quả thực thi được tự động lưu có cấu trúc trong thư mục `outputs/`:
 - `outputs/metrics.json`: Báo cáo chỉ số toàn diện kèm metadata môi trường và Git commit.
