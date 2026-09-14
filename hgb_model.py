@@ -415,7 +415,7 @@ class HistRegressionTree:
     """
 
     def __init__(self, max_depth=6, min_samples_leaf=20,
-                 l2_regularization=1.0, min_gain_to_split=1e-7, max_bins=255):
+                 l2_regularization=1.0, min_gain_to_split=1e-3, max_bins=255):
         self.max_depth        = int(max_depth)
         self.min_samples_leaf = int(min_samples_leaf)
         self.l2_reg           = float(l2_regularization)
@@ -511,8 +511,16 @@ class HistRegressionTree:
         left_idx = idx[mask]
         right_idx = idx[~mask]
 
-        if len(left_idx) < self.min_samples_leaf or len(right_idx) < self.min_samples_leaf:
-            return HistTreeNode(is_leaf=True, value=self._leaf_weight(g, h, idx))
+        # Safety net: _best_split đã đảm bảo N_L >= min_samples_leaf và
+        # N_R >= min_samples_leaf trước khi trả về split hợp lệ (xem điều kiện
+        # `valid` trong _best_split). Điều kiện assert dưới đây chỉ là kiểm tra
+        # bảo vệ, không phải nhánh logic chính — không bao giờ nên trigger.
+        assert len(left_idx) >= self.min_samples_leaf and \
+               len(right_idx) >= self.min_samples_leaf, (
+            f"_best_split returned invalid split: "
+            f"left={len(left_idx)}, right={len(right_idx)}, "
+            f"min_samples_leaf={self.min_samples_leaf}"
+        )
 
         node = HistTreeNode(is_leaf=False, feature_idx=feat,
                             bin_threshold=bin_thr, gain=gain)
@@ -573,7 +581,7 @@ class CustomHistGradientBoostingClassifier:
         min_samples_leaf=20,
         l2_regularization=1.0,
         max_bins=255,
-        min_gain_to_split=1e-7,
+        min_gain_to_split=1e-3,
         validation_fraction=0.1,
         n_iter_no_change=20,
         tol=1e-4,
@@ -690,12 +698,16 @@ class CustomHistGradientBoostingClassifier:
         ngẫu nhiên với tầng chia Train/Test bên ngoài nhưng vẫn hoàn toàn tái lập.
         """
         if isinstance(self.random_state, (int, np.integer)):
-            # Dẫn xuất seed riêng cho validation bằng công thức xác định (deterministic hash)
-            val_seed = int((int(self.random_state) * 1664525 + 1013904223) % (2**31 - 1))
-            rng = np.random.RandomState(val_seed)
+            # Dẫn xuất seed phụ (derived seed) bằng hash tuyến tính xác định:
+            #   hằng số nhân (1664525) và cộng (1013904223) lấy từ Numerical Recipes LCG,
+            #   modulo 2**32 để giữ đúng chuẩn số nguyên 32-bit không dấu.
+            # Lưu ý: Đây KHÔNG phải là một bước LCG độc lập — chỉ là phép biến đổi
+            # băm (hash transform) một chiều, dùng thuần túy để tạo seed phụ tái lập.
+            derived_seed = int((int(self.random_state) * 1664525 + 1013904223) % (2**32))
+            rng = np.random.RandomState(derived_seed)
         elif isinstance(self.random_state, np.random.RandomState):
-            val_seed = self.random_state.randint(0, 2**31 - 1)
-            rng = np.random.RandomState(val_seed)
+            derived_seed = self.random_state.randint(0, 2**32)
+            rng = np.random.RandomState(derived_seed)
         else:
             rng = np.random.RandomState(10007)
 
@@ -818,6 +830,14 @@ class CustomHistGradientBoostingClassifier:
                     no_improve          = 0
                 else:
                     no_improve += 1
+
+                # Fallback: đảm bảo best_n_iter_ luôn >= 1 sau iteration đầu tiên.
+                # Trường hợp hiếm gặp nhưng có thể xảy ra khi best_val_loss_ khởi
+                # tạo = np.inf và vl lần đầu không vượt ngưỡng tol (ví dụ tol < 0).
+                # Nếu không có fallback này, best_n_iter_ giữ giá trị 0 và điều kiện
+                # `if use_val and self.best_n_iter_ > 0` bên dưới sẽ không cắt cây.
+                if self.best_n_iter_ == 0:
+                    self.best_n_iter_ = m
 
                 if no_improve >= self.n_iter_no_change:
                     if verbose:
