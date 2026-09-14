@@ -91,10 +91,10 @@ Problem Definition ──> Domain Understanding ──> Data Cleaning ──> Fe
 | **11** | **Xây dựng mô hình cơ sở (Baseline Model)** | Thiết lập Dummy Majority Baseline (ROC-AUC=0.5) và Logistic Regression Baseline thuần NumPy (~0.78 ROC-AUC). |
 | **12** | **Nguyên lý No Free Lunch** | Biện minh khoa học: HGB vượt trội Linear về phi tuyến và vượt trội DNN về tốc độ/tài nguyên trên dữ liệu bảng. |
 | **13** | **Phân tích Bias và Variance** | Khảo sát đánh đổi Underfitting vs Overfitting; kiểm soát qua độ sâu cây (`max_depth=6`), $L_2$ penalty và Early Stopping. |
-| **14** | **Tối ưu siêu tham số (Tuning)** | `CustomGridSearchCV` thuần NumPy tìm kiếm bộ tham số tối ưu và ứng dụng Early Stopping tiết kiệm tính toán. |
-| **15** | **Lựa chọn & đánh giá Evaluation Metrics** | Đo lường toàn diện ROC-AUC, PR-AUC, F1; thuật toán quét ngưỡng (Threshold Tuning) trên Validation để khóa $T^*$. |
-| **16** | **Kiểm định chéo K-fold (Cross-Validation)** | `StratifiedKFold` ($K=3$) và `cross_val_score` thuần NumPy đánh giá độ ổn định $\mu \pm \sigma$. |
-| **17** | **Thực nghiệm huấn luyện mô hình** | Quy trình 2-Phase: Phase 1 Dev Model tìm `best_n_iter`; Phase 2 Full Refit trên 100% Train; Phase 3 Test duy nhất 1 lần. |
+| **14** | **Lựa chọn & đánh giá Evaluation Metrics** | Đo lường toàn diện ROC-AUC, PR-AUC, F1; thuật toán quét ngưỡng (Threshold Tuning) trên Validation để khóa $T^*$. |
+| **15** | **Kiểm định chéo K-fold (Cross-Validation)** | `StratifiedKFold` ($K=3$) và `cross_val_score` thuần NumPy đánh giá độ ổn định $\mu \pm \sigma$. |
+| **16** | **Tối ưu siêu tham số (Tuning)** | `CustomGridSearchCV` thuần NumPy tìm kiếm bộ tham số tối ưu và ứng dụng Early Stopping tiết kiệm tính toán. |
+| **17** | **Thực nghiệm huấn luyện mô hình** | Bảng nhật ký thực nghiệm đa cấu hình; Quy trình 2-Phase (Phase 1 Dev tìm `best_n_iter` -> Phase 2 Full Refit -> Phase 3 Test). |
 | **18** | **Kiểm định thống kê độ tin cậy** | Bootstrapping 1,000 lần ước lượng Khoảng tin cậy 95% CI; chứng minh HGB vượt trội có ý nghĩa so với Baseline ($p < 0.001$). |
 | **19** | **Phân tích lỗi (Error Analysis)** | Bóc tách ma trận nhầm lẫn: phân tích False Positives, False Negatives và mẫu ranh giới không chắc chắn ($p \approx 0.5$). |
 | **20** | **Khả năng giải thích mô hình (Interpretability)** | Trực quan hóa Split Gain Importance và Permutation Importance; xác nhận biến `MET_magnitude` dẫn đầu độ quan trọng. |
