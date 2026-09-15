@@ -205,38 +205,23 @@ add_md(r"""
 - **10 biến Razor ($M_R, R, MT2, \dots$)**: Các biến bất biến khối lượng do các nhà vật lý lý thuyết Stanford/CERN sáng tạo nhằm tái tạo khối lượng hạt mẹ mà không phụ thuộc vào hệ quy chiếu phòng thí nghiệm.
 
 ### 3.2 Nạp dữ liệu vào không gian bộ nhớ
-Hệ thống hỗ trợ nạp tệp `data/SUSY.csv` thật; trường hợp tệp chưa có, hệ thống tạo tập dữ liệu mô phỏng tương thích để pipeline chạy liên tục.
+Dữ liệu được nạp trực tiếp từ tệp chuẩn quốc tế `data/SUSY.csv` (2.39 GB, 5,000,000 mẫu) từ UCI Machine Learning Repository (Baldi et al., Nature Communications 2014).
+Để đảm bảo tính trung thực khoa học, hệ thống **chỉ sử dụng dữ liệu thực nghiệm thật**, tuyệt đối không sử dụng dữ liệu mô phỏng (No Synthetic Data).
 Mặc định `SAMPLE_LIMIT = 60_000` mẫu (48,000 train / 12,000 test) giúp thực thi nhanh chóng, chính xác và tái lập 100% kết quả thực nghiệm.
 """)
 
 add_code("""
-USING_SYNTHETIC_DATA = False
 data_path = 'data/SUSY.csv'
 if not os.path.exists(data_path):
     alt_path = 'SUSY.csv'
     if os.path.exists(alt_path):
         data_path = alt_path
-
-# Tự động khởi tạo dữ liệu mô phỏng nếu file gốc chưa tồn tại để notebook chạy mượt mà ngay lập tức
-if not os.path.exists(data_path):
-    USING_SYNTHETIC_DATA = True
-    os.makedirs('data', exist_ok=True)
-    data_path = 'data/SUSY.csv'
-    print("!" * 80)
-    print("  [CẢNH BÁO / WARNING: USING SYNTHETIC FALLBACK DATASET]")
-    print("  Không tìm thấy tệp dữ liệu chuẩn data/SUSY.csv.")
-    print("  Hệ thống đang tự động tạo 10,000 mẫu DỮ LIỆU MÔ PHỎNG để kiểm thử pipeline.")
-    print("!" * 80)
-    rng_sim = np.random.default_rng(42)
-    N_sim = 10_000
-    y_sim = rng_sim.binomial(1, 0.4576, size=N_sim).astype(np.float32)
-    X_sim = rng_sim.standard_normal(size=(N_sim, 18)).astype(np.float32)
-    X_sim[:, 6] = np.abs(X_sim[:, 6] * 1.5 + y_sim * 1.2)   # MET_magnitude
-    X_sim[:, 0] = np.abs(X_sim[:, 0] * 1.2 + y_sim * 0.8)   # lepton1_pT
-    X_sim[:, 10] = np.abs(X_sim[:, 10] * 1.3 + y_sim * 0.9) # M_R
-    sim_df = pd.DataFrame(np.hstack([y_sim.reshape(-1, 1), X_sim]))
-    sim_df.to_csv(data_path, index=False, header=False)
-    print(f"[+] Đã tạo thành công {N_sim:,} mẫu mô phỏng chuẩn 18 chiều.")
+    else:
+        raise FileNotFoundError(
+            f"Không tìm thấy tệp chuẩn '{data_path}' (2.39 GB, 5,000,000 mẫu).\\n"
+            "Vui lòng tải tệp SUSY.csv từ UCI Machine Learning Repository (doi:10.24432/C54606)\\n"
+            "và đặt vào thư mục data/SUSY.csv trước khi thực thi!"
+        )
 
 # Thiết lập giới hạn mẫu để chạy mượt mà trên môi trường máy cá nhân
 SAMPLE_LIMIT = 60_000
