@@ -64,21 +64,28 @@ HGB/
 │   └── SUSY.csv                      # Tập dữ liệu 5 triệu dòng (~2.39 GB) hoặc mẫu mô phỏng
 ├── hgb_model.py                      # Thư viện thuật toán cốt lõi 100% thuần Python/NumPy
 ├── main.py                           # Pipeline thực thi 2-Phase, kiểm thử và xuất kết quả qua CLI
-├── build_notebook.py                 # Script tự động tạo notebook.ipynb báo cáo toàn diện
-├── build_21_steps_notebook.py        # Wrapper tương thích ngược chuyển tiếp sang build_notebook.py
 ├── notebook.ipynb                    # Jupyter Notebook triển khai báo cáo phân loại thực nghiệm
-├── requirements.txt                  # Danh sách thư viện tối thiểu (numpy, pandas, matplotlib)
-├── evaluation_summary.txt            # Báo cáo đánh giá tổng hợp
+├── requirements.txt                  # Danh sách thư viện cần thiết (numpy, pandas, matplotlib, jupyter, nbformat)
 ├── .gitignore                        # Cấu hình bỏ qua tệp nhị phân và dữ liệu lớn
-├── outputs/                          # Thư mục lưu kết quả phân tích có cấu trúc
-│   ├── metrics.json                  # Toàn bộ chỉ số, thông tin môi trường, thời gian chạy
-│   ├── confusion_matrix.csv          # Ma trận nhầm lẫn chi tiết
-│   ├── threshold_sweep.csv           # Bảng quét ngưỡng phân loại trên tập Validation
-│   ├── feature_importance_gain.csv   # Độ quan trọng đặc trưng theo độ lợi phân tách (Gain)
-│   ├── feature_importance_permutation.csv # Độ quan trọng đặc trưng theo Delta-AUC trên Validation
-│   ├── training_history.csv          # Lịch sử suy giảm hàm mất mát qua từng vòng boosting
-│   ├── config.json                   # Siêu tham số của mô hình
-│   └── environment.json              # Thông tin phần cứng, OS, Python, NumPy, Git commit
+├── tests/                            # Bộ kiểm thử đơn vị tự động (32 tests - 100% Pass)
+│   ├── test_advanced_and_edge_cases.py   # Kiểm thử trường hợp biên, giá trị cực trị & đối số
+│   ├── test_benchmark_optimization.py    # Kiểm thử hiệu năng, bộ nhớ & tính bảo toàn số học
+│   ├── test_binning.py                   # Kiểm thử rời rạc hóa đặc trưng (HistBinMapper)
+│   ├── test_classifier.py                # Kiểm thử bộ phân loại HGB & Early Stopping
+│   ├── test_leakage.py                   # Kiểm thử chống rò rỉ dữ liệu (Zero Data Leakage)
+│   ├── test_metrics.py                   # Kiểm thử bộ chỉ số đánh giá (ROC-AUC, F1, Matrix)
+│   ├── test_split.py                     # Kiểm thử phân tầng dữ liệu & tính toàn vẹn chỉ mục
+│   └── test_tree.py                      # Kiểm thử nút cây và cây hồi quy Histogram
+└── outputs/                          # Thư mục lưu kết quả phân tích có cấu trúc
+    ├── metrics.json                  # Toàn bộ chỉ số, thông tin môi trường, thời gian chạy
+    ├── confusion_matrix.csv          # Ma trận nhầm lẫn chi tiết
+    ├── threshold_sweep.csv           # Bảng quét ngưỡng phân loại trên tập Validation
+    ├── feature_importance_gain.csv   # Độ quan trọng đặc trưng theo độ lợi phân tách (Gain)
+    ├── feature_importance_permutation.csv # Độ quan trọng đặc trưng theo Delta-AUC trên Validation
+    ├── training_history.csv          # Lịch sử suy giảm hàm mất mát qua từng vòng boosting
+    ├── loss_convergence.png          # Biểu đồ hội tụ hàm mất mát qua các vòng boosting
+    ├── config.json                   # Siêu tham số của mô hình
+    └── environment.json              # Thông tin phần cứng, OS, Python, NumPy, Git commit
 ```
 
 ---
@@ -235,12 +242,14 @@ python main.py --full
 python main.py --nrows 60000 --grid_search --cv_folds 3
 ```
 
-### 7.5 Tái tạo Notebook Báo cáo Phân loại Hạt SUSY
+### 7.5 Khởi chạy & Khám phá Jupyter Notebook
+File `notebook.ipynb` là báo cáo khoa học tương tác hoàn chỉnh, tích hợp đầy đủ 21 bước phân tích, biểu đồ trực quan hóa chuyên sâu và cơ chế auto-fallback linh hoạt (tự động phát hiện `data/SUSY.csv` hoặc sinh dữ liệu mô phỏng nếu chưa có file gốc):
 ```bash
-python build_notebook.py
-# Hoặc lệnh tương thích ngược:
-# python build_21_steps_notebook.py
+jupyter notebook notebook.ipynb
+# Hoặc khởi chạy trên Jupyter Lab:
+# jupyter lab notebook.ipynb
 ```
+Hoặc mở và thực thi trực tiếp trên VS Code, Cursor, PyCharm hoặc Google Colab.
 
 ---
 
@@ -312,7 +321,8 @@ Toàn bộ kết quả thực thi được tự động lưu có cấu trúc tro
 - `outputs/feature_importance_permutation.csv`: Xếp hạng đặc trưng theo độ nhạy suy giảm AUC trên Validation.
 - `outputs/training_history.csv`: Lịch sử hàm mất mát Log-Loss qua từng vòng lặp.
 - `outputs/loss_convergence.png`: Biểu đồ hội tụ hàm mất mát qua các vòng boosting.
-- `evaluation_summary.txt`: Báo cáo tóm tắt tổng quan dễ đọc.
+- `outputs/config.json`: Cấu hình siêu tham số mô hình đầy đủ để tái lập pipeline.
+- `outputs/environment.json`: Metadata chi tiết phần cứng, OS, phiên bản thư viện và Git commit.
 
 ### 9.3 So sánh Hiệu năng Trước & Sau Tối ưu hóa (Empirical Profiling & Scalability Benchmark)
 
