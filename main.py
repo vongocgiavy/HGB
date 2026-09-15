@@ -230,6 +230,7 @@ def main():
             "learning_rate": [0.08, 0.1],
             "max_depth": [5, 6],
             "min_samples_leaf": [20, 30],
+            "l2_regularization": [0.1, 1.0],
         }
         base_estimator = CustomHistGradientBoostingClassifier(
             n_estimators=min(args.n_estimators, 50),

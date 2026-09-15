@@ -25,8 +25,8 @@
   Trees built (Phase 1)   : 94
   Best iteration          : 74
   Best validation loss    : 0.45525
-  Phase 1 Dev train time  : 14.41s
-  Phase 2 Final train time: 12.10s (Full 48,000 samples)
+  Phase 1 Dev train time  : 4.69s
+  Phase 2 Final train time: 3.87s (Full 48,000 samples)
 
 [THRESHOLD]
   Best threshold          : 0.40
@@ -51,4 +51,4 @@
   Python                  : 3.13.5
   NumPy                   : 2.3.2
   Pandas                  : 2.3.1
-  Git commit              : b75f5196431ca59e54e91c17ed9183eeb393c2e8
+  Git commit              : 84ecf1995ab095eb6d8e237f540482bcf2dc658b
