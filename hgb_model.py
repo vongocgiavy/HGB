@@ -479,10 +479,11 @@ class HistRegressionTree:
         if not np.any(valid):
             return None
 
-        # Tính điểm score cho tất cả các điểm cắt hợp lệ
-        scores = np.full((n_features, n_bins), -np.inf, dtype=np.float64)
-        scores[valid] = (G_L[valid] ** 2) / (H_L[valid] + self.l2_reg) + \
-                        (G_R[valid] ** 2) / (H_R[valid] + self.l2_reg)
+        # Tối ưu hóa tính điểm score bằng C-level broadcasting qua np.where
+        denom_L = H_L + self.l2_reg
+        denom_R = H_R + self.l2_reg
+        sc = (G_L ** 2) / denom_L + (G_R ** 2) / denom_R
+        scores = np.where(valid, sc, -np.inf)
 
         max_flat_idx = int(np.argmax(scores))
         max_score = float(scores.ravel()[max_flat_idx])
@@ -494,7 +495,8 @@ class HistRegressionTree:
         if best_gain > self.min_gain:
             best_feat = int(max_flat_idx // n_bins)
             best_bin  = int(max_flat_idx % n_bins)
-            return best_feat, best_bin, best_gain
+            mask = X_node[:, best_feat] <= best_bin
+            return best_feat, best_bin, best_gain, mask
 
         return None
 
@@ -506,8 +508,7 @@ class HistRegressionTree:
         if split is None:
             return HistTreeNode(is_leaf=True, value=self._leaf_weight(g, h, idx))
 
-        feat, bin_thr, gain = split
-        mask = X_binned[idx, feat] <= bin_thr
+        feat, bin_thr, gain, mask = split
         left_idx = idx[mask]
         right_idx = idx[~mask]
 
@@ -812,9 +813,12 @@ class CustomHistGradientBoostingClassifier:
         if verbose:
             print(f"[*] Bat dau huan luyen HGB ({self.n_estimators} cay toi da, lr={self.learning_rate})...")
 
+        p_tr = self._sigmoid(F_tr)
+        if use_val:
+            p_val = self._sigmoid(F_val)
+
         t0 = time.time()
         for m in range(1, self.n_estimators + 1):
-            p_tr = self._sigmoid(F_tr)
             g = p_tr - y_tr
             h = np.maximum(p_tr * (1.0 - p_tr), 1e-16)
 
@@ -829,12 +833,14 @@ class CustomHistGradientBoostingClassifier:
             self.trees.append(tree)
 
             F_tr += self.learning_rate * tree.predict(X_tr)
-            tl = self._log_loss(y_tr, self._sigmoid(F_tr))
+            p_tr = self._sigmoid(F_tr)
+            tl = self._log_loss(y_tr, p_tr)
             self.train_loss_history_.append(tl)
 
             if use_val:
                 F_val += self.learning_rate * tree.predict(X_val)
-                vl = self._log_loss(y_val, self._sigmoid(F_val))
+                p_val = self._sigmoid(F_val)
+                vl = self._log_loss(y_val, p_val)
                 self.val_loss_history_.append(vl)
 
                 improved = vl < (self.best_val_loss_ - self.tol)

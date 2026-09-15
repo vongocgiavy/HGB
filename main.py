@@ -568,7 +568,8 @@ def main():
     report_path = os.path.join(data_dir, "evaluation_summary.txt")
     with open(report_path, "w", encoding="utf-8") as f:
         f.write("=" * 78 + "\n")
-        f.write("  HGB EVALUATION SUMMARY -- SUSY DATASET\n")
+        f.write("  HGB EVALUATION SUMMARY -- SUSY PARTICLE COLLISION CLASSIFICATION\n")
+        f.write("  Algorithm : Histogram Gradient Boosting (100% NumPy, Zero Scikit-Learn)\n")
         f.write("=" * 78 + "\n\n")
         f.write("[DATASET]\n")
         f.write(f"  Total samples           : {total_samples:,}\n")

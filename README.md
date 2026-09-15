@@ -1,4 +1,4 @@
-# Phân loại Hạt Siêu Đối Xứng (SUSY) bằng Histogram Gradient Boosting (HGB)
+# Phân Loại Biến Cố Va Chạm Hạt Siêu Đối Xứng (SUSY) Bằng Histogram Gradient Boosting (HGB)
 
 Dự án nghiên cứu và triển khai hoàn chỉnh thuật toán **Histogram Gradient Boosting (HGB)** từ đầu 100% bằng **Python thuần và NumPy** (Zero Scikit-Learn trong toàn bộ thuật toán cốt lõi và hệ thống metrics). Mô hình được tối ưu hóa chuyên sâu để phân loại các sự kiện va chạm hạt siêu đối xứng (Supersymmetric Particles) trên tập dữ liệu chuẩn quốc tế **SUSY Benchmark** từ **UCI Machine Learning Repository** (5,000,000 mẫu dữ liệu).
 
@@ -7,7 +7,7 @@ Dự án nghiên cứu và triển khai hoàn chỉnh thuật toán **Histogram 
 ## Mục lục
 1. [Tổng quan Bài toán & Dữ liệu](#1-tổng-quan-bài-toán--dữ-liệu)
 2. [Cấu trúc Thư mục Dự án](#2-cấu-trúc-thư-mục-dự-án)
-3. [Quy trình 21 Bước Xây dựng Mô hình Machine Learning](#3-quy-trình-21-bước-xây-dựng-mô-hình-machine-learning)
+3. [Phương pháp luận: Quy trình 21 Bước Xây dựng Mô hình Machine Learning](#3-phương-pháp-luận-quy-trình-21-bước-xây-dựng-mô-hình-machine-learning)
 4. [Cơ sở Lý thuyết & Toán học của Thuật toán HGB](#4-cơ-sở-lý-thuyết--toán-học-của-thuật-toán-hgb)
 5. [Quy trình Huấn luyện 2-Phase & Ngăn chặn Rò rỉ Dữ liệu](#5-quy-trình-huấn-luyện-2-phase--ngăn-chặn-rò-rỉ-dữ-liệu)
 6. [Chi tiết Kiến trúc Các Lớp & Hàm (Zero Scikit-Learn)](#6-chi-tiết-kiến-trúc-các-lớp--hàm-zero-scikit-learn)
@@ -64,8 +64,9 @@ HGB/
 │   └── SUSY.csv                      # Tập dữ liệu 5 triệu dòng (~2.39 GB) hoặc mẫu mô phỏng
 ├── hgb_model.py                      # Thư viện thuật toán cốt lõi 100% thuần Python/NumPy
 ├── main.py                           # Pipeline thực thi 2-Phase, kiểm thử và xuất kết quả qua CLI
-├── build_21_steps_notebook.py        # Script tạo notebook.ipynb chuẩn 21 bước Machine Learning
-├── notebook.ipynb                    # Jupyter Notebook triển khai trọn vẹn 21 bước Machine Learning
+├── build_notebook.py                 # Script tự động tạo notebook.ipynb báo cáo toàn diện
+├── build_21_steps_notebook.py        # Wrapper tương thích ngược chuyển tiếp sang build_notebook.py
+├── notebook.ipynb                    # Jupyter Notebook triển khai báo cáo phân loại thực nghiệm
 ├── requirements.txt                  # Danh sách thư viện tối thiểu (numpy, pandas, matplotlib)
 ├── evaluation_summary.txt            # Báo cáo đánh giá tổng hợp
 ├── .gitignore                        # Cấu hình bỏ qua tệp nhị phân và dữ liệu lớn
@@ -82,9 +83,9 @@ HGB/
 
 ---
 
-## 3. Quy trình 21 Bước Xây dựng Mô hình Machine Learning
+## 3. Phương pháp luận: Quy trình 21 Bước Xây dựng Mô hình Machine Learning
 
-Dự án và tệp `notebook.ipynb` được thiết kế cấu trúc chặt chẽ theo **21 bước chuẩn mực**:
+Dự án áp dụng phương pháp luận có cấu trúc chặt chẽ theo **chu trình 21 bước chuẩn mực**:
 
 ```text
 Problem Definition ──> Domain Understanding ──> Data Cleaning ──> Feature Processing ──> Feature Engineering
@@ -234,9 +235,11 @@ python main.py --full
 python main.py --nrows 60000 --grid_search --cv_folds 3
 ```
 
-### 7.5 Tái tạo Notebook Báo cáo Chuẩn 21 Bước Machine Learning
+### 7.5 Tái tạo Notebook Báo cáo Phân loại Hạt SUSY
 ```bash
-python build_21_steps_notebook.py
+python build_notebook.py
+# Hoặc lệnh tương thích ngược:
+# python build_21_steps_notebook.py
 ```
 
 ---
