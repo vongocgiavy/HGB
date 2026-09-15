@@ -564,60 +564,100 @@ def main():
     with open(os.path.join(outputs_dir, "environment.json"), "w", encoding="utf-8") as f:
         json.dump(metrics_json_data["environment"], f, indent=2)
 
-    # evaluation_summary.txt
+    # evaluation_summary.txt (Báo cáo trực quan hóa, sinh động và học thuật)
+    width = 88
+
+    def _box_hdr(title):
+        prefix = f"┌─ {title} "
+        return prefix + "─" * max(0, width - len(prefix) - 1) + "┐"
+
+    def _box_ftr():
+        return "└" + "─" * (width - 2) + "┘"
+
+    def _box_row(text=""):
+        pad = width - len(text) - 4
+        return f"│ {text}" + " " * max(0, pad) + " │"
+
+    def _make_bar(pct, bar_len=12):
+        filled = int(round(float(pct) * bar_len))
+        filled = max(0, min(bar_len, filled))
+        return "[" + "█" * filled + "░" * (bar_len - filled) + "]"
+
+    fpr = (fp / (fp + tn)) * 100 if (fp + tn) > 0 else 0.0
+    fnr = (fn / (fn + tp)) * 100 if (fn + tp) > 0 else 0.0
+
+    report_lines = [
+        "=" * width,
+        "   BÁO CÁO NGHIỆM THU: PHÂN LOẠI BIẾN CỐ VA CHẠM HẠT SIÊU ĐỐI XỨNG (SUSY)",
+        "   Thuật toán: Histogram Gradient Boosting (100% Thuần Python/NumPy - Zero Sklearn)",
+        "=" * width,
+        "",
+        _box_hdr("[1] SƠ ĐỒ PHÂN BỔ DỮ LIỆU & KIỂM TOÁN CÁCH LY (ZERO DATA LEAKAGE)"),
+        _box_row(f"Quy mô dữ liệu : {total_samples:,} mẫu (18 đặc trưng liên tục) | Nhãn: nhị phân {{0, 1}}"),
+        _box_row(),
+        _box_row(f"  TẬP HUẤN LUYỆN (TRAIN): {train_samples:,} mẫu (80.0%)       TẬP KIỂM THỬ (TEST): {test_samples:,} mẫu"),
+        _box_row(f"  ├── Fit-Train (90%): {len(dev_model.y_train_sub_):,} mẫu (Dựng cây/g,h)    │   (20.0% - Độc lập 100%,"),
+        _box_row(f"  └── Validation (10%): {len(y_val):,} mẫu (Early Stop/tau*) │    khóa chặt đến Phase 3)"),
+        _box_row(),
+        _box_row("  Kiểm toán dữ liệu: 0 NaN | 0 Inf | 0 Index Overlap | Trạng thái: [✓ 14/14 PASSED]"),
+        _box_ftr(),
+        "",
+        _box_hdr(f"[2] KẾT QUẢ ĐÁNH GIÁ TRÊN TẬP TEST ĐỘC LẬP (TẠI NGƯỠNG KHÓA tau* = {best_threshold:.2f})"),
+        _box_row(),
+        _box_row(" Chỉ số             Giá trị       Trực quan hóa        Ý nghĩa Học thuật & Vật lý"),
+        _box_row(" ──────────────────────────────────────────────────────────────────────────────────"),
+        _box_row(f" Accuracy           {test_acc*100:6.2f}%   {_make_bar(test_acc)} {test_acc*100:4.1f}%   Tỷ lệ phân loại đúng toàn cục"),
+        _box_row(f" Precision (PPV)    {test_prec*100:6.2f}%   {_make_bar(test_prec)} {test_prec*100:4.1f}%   Độ tin cậy khi báo hiệu SUSY"),
+        _box_row(f" Recall (TPR)       {test_rec*100:6.2f}%   {_make_bar(test_rec)} {test_rec*100:4.1f}%   Hiệu suất phát hiện hạt thực"),
+        _box_row(f" Specificity (TNR)  {test_spec*100:6.2f}%   {_make_bar(test_spec)} {test_spec*100:4.1f}%   Khả năng lọc sạch nền tạp âm"),
+        _box_row(f" NPV                {test_npv*100:6.2f}%   {_make_bar(test_npv)} {test_npv*100:4.1f}%   Độ tin cậy khi dự đoán là nền"),
+        _box_row(f" F1-Score           {test_f1*100:6.2f}%   {_make_bar(test_f1)} {test_f1*100:4.1f}%   Trung bình điều hòa Prec & Rec"),
+        _box_row(f" ROC-AUC            {test_auc:6.4f}    {_make_bar(test_auc)} {test_auc*100:4.1f}%   Năng lực phân biệt độc lập tau"),
+        _box_row(),
+        _box_ftr(),
+        "",
+        _box_hdr("[3] MA TRẬN NHẦM LẪN CHI TIẾT (CONFUSION MATRIX TRÊN TẬP TEST)"),
+        _box_row(),
+        _box_row("                      Dự báo: NỀN (0)               Dự báo: HẠT SUSY (1)"),
+        _box_row(f" Thực tế: NỀN (0)     TN = {tn:5,d} ({tn/total_cm*100:4.1f}%) [Đúng nền]    FP = {fp:5,d} ({fp/total_cm*100:4.1f}%) [Báo động giả]"),
+        _box_row(f" Thực tế: SUSY (1)    FN = {fn:5,d} ({fn/total_cm*100:4.1f}%) [Bỏ sót]      TP = {tp:5,d} ({tp/total_cm*100:4.1f}%) [Bắt đúng hạt]"),
+        _box_row(),
+        _box_row(f" • Tỷ lệ báo động giả (False Positive Rate - FPR): {fpr:5.2f}%"),
+        _box_row(f" • Tỷ lệ bỏ sót hạt   (False Negative Rate - FNR): {fnr:5.2f}%"),
+        _box_ftr(),
+        "",
+        _box_hdr("[4] TOP ĐẶC TRƯNG DẪN DẮT QUYẾT ĐỊNH (FEATURE IMPORTANCES)"),
+        _box_row(),
+        _box_row(" Hạng  Tên đặc trưng      Phân loại     Tỷ lệ Gain    Phân bổ trực quan   Val DeltaAUC"),
+        _box_row(" ──────────────────────────────────────────────────────────────────────────────────"),
+    ]
+    for r, idx in enumerate(sorted_gain_idx[:5], 1):
+        fn_name = FEATURE_NAMES[idx]
+        g_val = gain_importances[idx]
+        p_val = perm_importances[idx]
+        is_low = fn_name in ['lepton1_pT', 'lepton1_eta', 'lepton1_phi', 'lepton2_pT', 'lepton2_eta', 'lepton2_phi', 'MET_magnitude', 'MET_phi']
+        cat = "Low-level" if is_low else "High-level"
+        bar = _make_bar(g_val, bar_len=12)
+        report_lines.append(_box_row(f"#{r}   {fn_name:<18} {cat:<10}   {g_val*100:5.2f}%      {bar}      {p_val:+9.5f}"))
+    report_lines.extend([
+        _box_row(),
+        _box_ftr(),
+        "",
+        _box_hdr("[5] THÔNG SỐ HUẤN LUYỆN & MÔI TRƯỜNG THỰC THI"),
+        _box_row(),
+        _box_row(f"• Cấu hình HGB       : {hgb_config['n_estimators']} trees max | depth={hgb_config['max_depth']} | min_leaf={hgb_config['min_samples_leaf']} | L2={hgb_config['l2_regularization']} | bins={hgb_config['max_bins']}"),
+        _box_row(f"• Cơ chế Dừng sớm    : Dừng tại cây {stopped_iter}, Best Iteration = {best_n_iter} (Val Loss = {best_val_loss:.5f})"),
+        _box_row(f"• Thời gian Train    : Phase 1 Dev = {t_dev:.2f}s | Phase 2 Full Refit ({train_samples:,} mẫu) = {t_final:.2f}s"),
+        _box_row(f"• Khóa ngưỡng tau*   : tau* = {best_threshold:.2f} (Quét độc lập theo max F1 trên Validation Set)"),
+        _box_row(f"• Môi trường runtime : Python {sys.version.split()[0]} | NumPy {np.__version__} | Pandas {pd.__version__}"),
+        _box_row(f"• Phiên bản Git      : {git_commit}"),
+        _box_row(),
+        _box_ftr(),
+    ])
+
     report_path = os.path.join(data_dir, "evaluation_summary.txt")
     with open(report_path, "w", encoding="utf-8") as f:
-        f.write("=" * 78 + "\n")
-        f.write("  HGB EVALUATION SUMMARY -- SUSY PARTICLE COLLISION CLASSIFICATION\n")
-        f.write("  Algorithm : Histogram Gradient Boosting (100% NumPy, Zero Scikit-Learn)\n")
-        f.write("=" * 78 + "\n\n")
-        f.write("[DATASET]\n")
-        f.write(f"  Total samples           : {total_samples:,}\n")
-        f.write(f"  Train samples           : {train_samples:,}\n")
-        f.write(f"  Internal train samples  : {len(dev_model.y_train_sub_):,}\n")
-        f.write(f"  Validation samples      : {len(y_val):,}\n")
-        f.write(f"  Test samples            : {test_samples:,}\n")
-        f.write(f"  Unassigned samples      : {unassigned}\n")
-        f.write(f"  Coverage                : {coverage:.2f}%\n\n")
-
-        f.write("[HYPERPARAMETERS]\n")
-        for k, v in hgb_config.items():
-            f.write(f"  {k:<24}: {v}\n")
-        if gs_metadata:
-            f.write(f"  Grid Search Best Params : {gs_metadata['best_params']}\n")
-            f.write(f"  Best CV ROC-AUC         : {gs_metadata['best_cv_score']:.4f}\n")
-
-        f.write("\n[TRAINING]\n")
-        f.write(f"  Trees built (Phase 1)   : {stopped_iter}\n")
-        f.write(f"  Best iteration          : {best_n_iter}\n")
-        f.write(f"  Best validation loss    : {best_val_loss:.5f}\n")
-        f.write(f"  Phase 1 Dev train time  : {t_dev:.2f}s\n")
-        f.write(f"  Phase 2 Final train time: {t_final:.2f}s (Full {train_samples:,} samples)\n\n")
-
-        f.write("[THRESHOLD]\n")
-        f.write(f"  Best threshold          : {best_threshold:.2f}\n")
-        f.write(f"  Threshold selection     : Validation Set only (Max F1 = {best_val_f1*100:.2f}%)\n\n")
-
-        f.write("[FINAL TEST METRICS]\n")
-        f.write(f"  Accuracy                : {test_acc*100:.2f}%\n")
-        f.write(f"  Precision               : {test_prec*100:.2f}%\n")
-        f.write(f"  Recall                  : {test_rec*100:.2f}%\n")
-        f.write(f"  Specificity             : {test_spec*100:.2f}%\n")
-        f.write(f"  NPV                     : {test_npv*100:.2f}%\n")
-        f.write(f"  F1-Score                : {test_f1*100:.2f}%\n")
-        f.write(f"  ROC-AUC                 : {test_auc:.4f}\n\n")
-
-        f.write("[CONFUSION MATRIX]\n")
-        f.write(f"  TN = {tn:,}  FP = {fp:,}  FN = {fn:,}  TP = {tp:,} (Total = {total_cm:,})\n\n")
-
-        f.write("[DATA LEAKAGE AUDIT]\n")
-        f.write("  Status                  : PASSED (14/14 checks)\n\n")
-
-        f.write("[ENVIRONMENT]\n")
-        f.write(f"  Python                  : {sys.version.split()[0]}\n")
-        f.write(f"  NumPy                   : {np.__version__}\n")
-        f.write(f"  Pandas                  : {pd.__version__}\n")
-        f.write(f"  Git commit              : {git_commit}\n")
+        f.write("\n".join(report_lines) + "\n")
 
     print(f"\n[v] All outputs successfully generated and saved in: {outputs_dir}")
     print(f"[v] Summary report saved to: {report_path}")

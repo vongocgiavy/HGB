@@ -275,27 +275,33 @@ Dự án tích hợp hệ thống kiểm toán tự động gồm 14 tiêu chí 
 ### 9.1 Bảng kết quả thực nghiệm chuẩn (Benchmark N=60,000 mẫu, Test=12,000 mẫu)
 Toàn bộ số liệu dưới đây được sinh tự động từ quá trình chạy thực tế `main.py --nrows 60000` (Zero Scikit-Learn, Zero Data Leakage):
 
-| Chỉ số đánh giá | Giá trị thực nghiệm | Ý nghĩa vật lý & nghiệp vụ |
-| :--- | :---: | :--- |
-| **Accuracy (Độ chính xác)** | **79.26%** | Tỷ lệ tổng thể các sự kiện được phân loại chính xác |
-| **Precision (Độ chuẩn xác)** | **76.70%** | Độ tin cậy khi mô hình dự báo là hạt SUSY |
-| **Recall / Sensitivity (Độ nhạy)** | **79.12%** | Tỷ lệ hạt SUSY thực tế được phát hiện thành công |
-| **Specificity (Độ đặc hiệu)** | **79.38%** | Khả năng loại trừ chính xác các va chạm nền SM |
-| **NPV (Negative Predictive Value)** | **81.59%** | Độ tin cậy khi mô hình xác nhận là biến cố nền |
-| **F1-Score (F1 hài hòa)** | **77.89%** | Trung bình điều hòa giữa Precision và Recall tại $\tau^* = 0.40$ |
-| **ROC-AUC** | **0.8767** | Năng lực phân tách xác suất độc lập với ngưỡng quyết định |
-| **Ngưỡng tối ưu $\tau^*$** | **0.40** | Được quét và khóa độc lập trên tập Validation nội bộ (mặc định class: 0.50) |
+| Chỉ số đánh giá | Giá trị thực nghiệm | Trực quan hóa | Ý nghĩa Học thuật & Vật lý |
+| :--- | :---: | :---: | :--- |
+| **Accuracy (Độ chính xác)** | **79.26%** | `[██████████░░]` 79.3% | Tỷ lệ biến cố va chạm được phân loại chính xác toàn cục |
+| **Precision (Độ chuẩn xác)** | **76.70%** | `[█████████░░░]` 76.7% | Độ tin cậy thực tế khi mô hình phát tín hiệu hạt SUSY |
+| **Recall / Sensitivity (Độ nhạy)** | **79.12%** | `[█████████░░░]` 79.1% | Tỷ lệ hạt SUSY thực tế được phát hiện thành công |
+| **Specificity (Độ đặc hiệu)** | **79.38%** | `[██████████░░]` 79.4% | Khả năng thanh lọc và loại bỏ chính xác tạp âm nền SM |
+| **NPV (Negative Predictive Value)** | **81.59%** | `[██████████░░]` 81.6% | Độ tin cậy khi mô hình xác nhận biến cố là nền chuẩn |
+| **F1-Score (F1 hài hòa)** | **77.89%** | `[█████████░░░]` 77.9% | Trung bình điều hòa giữa Precision và Recall tại $\tau^* = 0.40$ |
+| **ROC-AUC** | **0.8767** | `[███████████░]` 87.7% | Năng lực phân biệt xác suất độc lập với ngưỡng quyết định |
+| **Ngưỡng tối ưu $\tau^*$** | **0.40** | `Khóa tại Val` | Tối ưu hóa độc lập theo Max F1 trên Validation Set |
 
-**Ma trận nhầm lẫn trên tập Test ($N=12,000$ mẫu)**:
-- $\text{True Negatives (TN)}$: **5,127** (42.7%)
-- $\text{False Positives (FP)}$: **1,332** (11.1%) — FPR = 20.62%
-- $\text{False Negatives (FN)}$: **1,157** (9.6%) — FNR = 20.88%
-- $\text{True Positives (TP)}$: **4,384** (36.5%)
+**Ma trận nhầm lẫn trực quan trên tập Test ($N=12,000$ mẫu)**:
 
-**Xếp hạng đặc trưng hàng đầu**:
-1. `MET_magnitude` (Độ lớn năng lượng khuyết): Chiếm **50.25%** Gain, $\Delta\text{AUC} = +0.17861$
-2. `lepton1_pT` (Động lượng ngang lepton 1): Chiếm **22.39%** Gain, $\Delta\text{AUC} = +0.07882$
-3. `axial_MET` (Năng lượng khuyết dọc trục): Chiếm **5.69%** Gain, $\Delta\text{AUC} = +0.02225$
+| Thực tế \ Dự báo | Dự báo: NỀN (0) | Dự báo: HẠT SUSY (1) | Tổng thực tế |
+| :--- | :---: | :---: | :---: |
+| **Thực tế: NỀN (0)** | $\text{TN} = \mathbf{5,127}$ (42.7%) <br> *(Lọc đúng biến cố nền)* | $\text{FP} = \mathbf{1,332}$ (11.1%) <br> *(Báo động giả - FPR: 20.62%)* | 6,459 (53.8%) |
+| **Thực tế: SUSY (1)** | $\text{FN} = \mathbf{1,157}$ (9.6%) <br> *(Bỏ sót tín hiệu - FNR: 20.88%)* | $\text{TP} = \mathbf{4,384}$ (36.5%) <br> *(Phát hiện đúng hạt SUSY)* | 5,541 (46.2%) |
+
+**Xếp hạng đặc trưng hàng đầu dẫn dắt quyết định**:
+
+| Hạng | Đặc trưng vật lý | Phân loại | Tỷ lệ Gain% | Phân bổ trực quan | $\Delta\text{AUC}$ (Validation) | Ý nghĩa vật lý |
+| :---: | :--- | :---: | :---: | :---: | :---: | :--- |
+| **#1** | `MET_magnitude` | Low-level | **50.25%** | `[██████░░░░░░]` | $+0.17861$ | Năng lượng khuyết mang dấu ấn hạt vô hình (LSP) |
+| **#2** | `lepton1_pT` | Low-level | **22.39%** | `[███░░░░░░░░░]` | $+0.07882$ | Động lượng ngang lepton thứ nhất sinh từ phân rã |
+| **#3** | `axial_MET` | High-level | **5.69%** | `[█░░░░░░░░░░░]` | $+0.02225$ | Năng lượng khuyết chiếu dọc theo hướng phản lực |
+| **#4** | `lepton1_eta` | Low-level | **3.60%** | `[░░░░░░░░░░░░]` | $+0.00868$ | Góc độ giả nhanh của lepton thứ nhất |
+| **#5** | `lepton2_eta` | Low-level | **3.45%** | `[░░░░░░░░░░░░]` | $+0.00935$ | Góc độ giả nhanh của lepton thứ hai |
 
 ### 9.2 Các tệp đầu ra trong thư mục `outputs/`
 Toàn bộ kết quả thực thi được tự động lưu có cấu trúc trong thư mục `outputs/`:

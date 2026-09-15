@@ -10,8 +10,8 @@
   "best_iteration": 74,
   "trees_built_phase1": 94,
   "best_val_loss": 0.45524805784225464,
-  "training_time_dev_sec": 4.429925441741943,
-  "training_time_final_sec": 3.9287822246551514,
+  "training_time_dev_sec": 6.431268215179443,
+  "training_time_final_sec": 4.848179817199707,
   "metrics": {
     "accuracy": 0.7925833333333333,
     "precision": 0.7669699090272918,
@@ -33,6 +33,6 @@
     "python_version": "3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]",
     "numpy_version": "2.3.2",
     "pandas_version": "2.3.1",
-    "git_commit": "2ab08390f3cf53383dbaf0f2b8aa71d95ee38384"
+    "git_commit": "159bc20315a79374203c970128a91520a1d86279"
   }
 }
