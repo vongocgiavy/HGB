@@ -12,6 +12,19 @@ import subprocess
 import numpy as np
 import pandas as pd
 
+from weight import (
+    FEATURE_NAMES,
+    FEATURE_DESCRIPTIONS,
+    LOW_LEVEL_FEATURES,
+    DATA_CONFIG,
+    HGB_BASE_PARAMS,
+    EARLY_STOPPING_CONFIG,
+    THRESHOLD_CONFIG,
+    GRID_SEARCH_CONFIG,
+    OUTPUT_CONFIG,
+    REPORT_CONFIG,
+)
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
@@ -31,39 +44,9 @@ from hgb_model import (
 )
 
 # ==============================================================================
-# FEATURE DEFINITIONS (SUSY dataset, Baldi et al. 2014, UCI doi:10.24432/C54606)
-# Col 0 = label (1=SUSY signal, 0=SM background)
-# Col 1-8  = 8 low-level kinematic features
-# Col 9-18 = 10 high-level derived features
+# FEATURE DEFINITIONS & PIPELINE CONSTANTS — loaded from weight.py
+# Chỉnh sửa siêu tham số, đặc trưng, ngưỡng tại: weight.py
 # ==============================================================================
-FEATURE_NAMES = [
-    "lepton1_pT",   "lepton1_eta",  "lepton1_phi",
-    "lepton2_pT",   "lepton2_eta",  "lepton2_phi",
-    "MET_magnitude","MET_phi",
-    "MET_rel", "axial_MET", "M_R", "M_TR_2", "R", "MT2", "S_R",
-    "M_Delta_R", "dPhi_r_b", "cos_theta_r1",
-]
-
-FEATURE_DESCRIPTIONS = {
-    "lepton1_pT":    "Transverse momentum lepton 1 [Low-level]",
-    "lepton1_eta":   "Pseudorapidity lepton 1 [Low-level]",
-    "lepton1_phi":   "Azimuthal angle lepton 1 [Low-level]",
-    "lepton2_pT":    "Transverse momentum lepton 2 [Low-level]",
-    "lepton2_eta":   "Pseudorapidity lepton 2 [Low-level]",
-    "lepton2_phi":   "Azimuthal angle lepton 2 [Low-level]",
-    "MET_magnitude": "Missing Transverse Energy magnitude [Low-level]",
-    "MET_phi":       "MET azimuthal angle [Low-level]",
-    "MET_rel":       "MET relative to nearest jet [High-level]",
-    "axial_MET":     "Axial Missing ET [High-level]",
-    "M_R":           "Razor mass M_R [High-level]",
-    "M_TR_2":        "Transverse razor mass M_TR_2 [High-level]",
-    "R":             "Razor ratio R [High-level]",
-    "MT2":           "Stransverse mass MT2 [High-level]",
-    "S_R":           "Super-razor variable S_R [High-level]",
-    "M_Delta_R":     "Super-razor M_Delta_R [High-level]",
-    "dPhi_r_b":      "Azimuthal angle dPhi_r_b [High-level]",
-    "cos_theta_r1":  "cos(theta_r1) Razor frame decay angle [High-level]",
-}
 
 SEP  = "=" * 78
 LINE = "-" * 78
@@ -75,20 +58,20 @@ def parse_arguments():
     )
     p.add_argument("--full",              action="store_true", help="Chạy trên toàn bộ 5,000,000 mẫu")
     p.add_argument("--nrows",             type=int,   default=None, help="Số dòng chạy nhanh (ví dụ: 60000 cho smoke test)")
-    p.add_argument("--n_estimators",      type=int,   default=200)
-    p.add_argument("--learning_rate", "--lr", type=float, default=0.1)
-    p.add_argument("--max_depth",         type=int,   default=6)
-    p.add_argument("--min_samples_leaf",  type=int,   default=20)
-    p.add_argument("--l2_regularization", "--l2_reg", type=float, default=1.0)
-    p.add_argument("--max_bins",          type=int,   default=255)
-    p.add_argument("--min_gain_to_split", "--min_gain", type=float, default=1e-3)
-    p.add_argument("--validation_fraction", type=float, default=0.1)
-    p.add_argument("--n_iter_no_change", "--patience",  type=int,   default=20)
-    p.add_argument("--tol",               type=float, default=1e-4)
+    p.add_argument("--n_estimators",      type=int,   default=HGB_BASE_PARAMS["n_estimators"])
+    p.add_argument("--learning_rate", "--lr", type=float, default=HGB_BASE_PARAMS["learning_rate"])
+    p.add_argument("--max_depth",         type=int,   default=HGB_BASE_PARAMS["max_depth"])
+    p.add_argument("--min_samples_leaf",  type=int,   default=HGB_BASE_PARAMS["min_samples_leaf"])
+    p.add_argument("--l2_regularization", "--l2_reg", type=float, default=HGB_BASE_PARAMS["l2_regularization"])
+    p.add_argument("--max_bins",          type=int,   default=HGB_BASE_PARAMS["max_bins"])
+    p.add_argument("--min_gain_to_split", "--min_gain", type=float, default=HGB_BASE_PARAMS["min_gain_to_split"])
+    p.add_argument("--validation_fraction", type=float, default=EARLY_STOPPING_CONFIG["validation_fraction"])
+    p.add_argument("--n_iter_no_change", "--patience",  type=int,   default=EARLY_STOPPING_CONFIG["n_iter_no_change"])
+    p.add_argument("--tol",               type=float, default=EARLY_STOPPING_CONFIG["tol"])
     p.add_argument("--threshold",         type=float, default=None, help="Ngưỡng phân loại chỉ định thủ công (nếu không set sẽ tự động quét tối ưu trên Val)")
-    p.add_argument("--random_state",      type=int,   default=42)
+    p.add_argument("--random_state",      type=int,   default=HGB_BASE_PARAMS["random_state"])
     p.add_argument("--grid_search",       action="store_true", help="Bật tìm kiếm lưới siêu tham số trên tập train")
-    p.add_argument("--cv_folds",          type=int,   default=3)
+    p.add_argument("--cv_folds",          type=int,   default=GRID_SEARCH_CONFIG["cv_folds"])
     return p.parse_args()
 
 
@@ -115,9 +98,9 @@ def main():
     # 1. Load data
     # ------------------------------------------------------------------
     data_dir  = os.path.dirname(os.path.abspath(__file__))
-    data_path = os.path.join(data_dir, "data", "SUSY.csv")
+    data_path = os.path.join(data_dir, DATA_CONFIG["data_subdir"], DATA_CONFIG["filename"])
     if not os.path.exists(data_path):
-        alt_path = os.path.join(data_dir, "SUSY.csv")
+        alt_path = os.path.join(data_dir, DATA_CONFIG["filename"])
         if os.path.exists(alt_path):
             data_path = alt_path
         else:
@@ -144,9 +127,10 @@ def main():
 
     # Kiểm tra cứng kích thước
     if nrows_to_load is None:
-        if X.shape[0] != 5_000_000 or len(y) != 5_000_000:
-            raise ValueError(f"Yeu cau 5,000,000 mau nhung chi doc duoc {X.shape[0]:,} mau.")
-        print("[PASS] Full dataset loaded = 5,000,000 samples.")
+        expected = DATA_CONFIG["expected_full_samples"]
+        if X.shape[0] != expected or len(y) != expected:
+            raise ValueError(f"Yeu cau {expected:,} mau nhung chi doc duoc {X.shape[0]:,} mau.")
+        print(f"[PASS] Full dataset loaded = {expected:,} samples.")
     else:
         print(f"[INFO] Quick test dataset loaded = {X.shape[0]:,} samples.")
 
@@ -167,9 +151,9 @@ def main():
     # ------------------------------------------------------------------
     # 2. Stratified Train/Test split (80/20)
     # ------------------------------------------------------------------
-    print(f"\n[2] Stratified Train/Test split (80% Train, 20% Test)...")
+    print(f"\n[2] Stratified Train/Test split ({int((1-DATA_CONFIG['test_size'])*100)}% Train, {int(DATA_CONFIG['test_size']*100)}% Test)...")
     X_train, X_test, y_train, y_test, train_idx, test_idx = train_test_split_stratified(
-        X, y, test_size=0.2, random_state=args.random_state, return_indices=True
+        X, y, test_size=DATA_CONFIG["test_size"], random_state=args.random_state, return_indices=True
     )
 
     total_samples = len(X)
@@ -185,8 +169,10 @@ def main():
     print(f"    Coverage      = {coverage:.2f}%")
 
     if nrows_to_load is None:
-        assert train_samples == 4_000_000, f"Expected 4,000,000 train samples, got {train_samples}"
-        assert test_samples == 1_000_000, f"Expected 1,000,000 test samples, got {test_samples}"
+        exp_tr = DATA_CONFIG["expected_train_samples"]
+        exp_te = DATA_CONFIG["expected_test_samples"]
+        assert train_samples == exp_tr, f"Expected {exp_tr:,} train samples, got {train_samples:,}"
+        assert test_samples  == exp_te, f"Expected {exp_te:,} test samples, got {test_samples:,}"
     assert train_samples + test_samples == total_samples
     assert unassigned == 0
 
@@ -221,19 +207,13 @@ def main():
     gs_metadata = None
     if args.grid_search:
         # Tuning trên subset của training data để tối ưu thời gian
-        subset_size = min(60_000, train_samples)
+        subset_size = min(GRID_SEARCH_CONFIG["subset_size"], train_samples)
         idx_grid = np.random.RandomState(args.random_state).choice(train_samples, subset_size, replace=False)
         X_grid, y_grid = X_train[idx_grid], y_train[idx_grid]
         print(f"\n[4.0] [GRID SEARCH] Hyperparameters were selected using only a subset of the development training data: {subset_size:,} samples from X_train.")
 
-        param_grid = {
-            "learning_rate": [0.08, 0.1],
-            "max_depth": [5, 6],
-            "min_samples_leaf": [20, 30],
-            "l2_regularization": [0.1, 1.0],
-        }
         base_estimator = CustomHistGradientBoostingClassifier(
-            n_estimators=min(args.n_estimators, 50),
+            n_estimators=min(args.n_estimators, GRID_SEARCH_CONFIG["gs_n_estimators_cap"]),
             l2_regularization=args.l2_regularization,
             max_bins=args.max_bins,
             validation_fraction=args.validation_fraction,
@@ -242,9 +222,9 @@ def main():
         )
         gs = CustomGridSearchCV(
             estimator=base_estimator,
-            param_grid=param_grid,
+            param_grid=GRID_SEARCH_CONFIG["param_grid"],
             cv=args.cv_folds,
-            scoring="roc_auc",
+            scoring=GRID_SEARCH_CONFIG["scoring"],
             refit=False,
             verbose=1
         )
@@ -287,9 +267,9 @@ def main():
     p_val = dev_model.predict_proba(X_val)
 
     print(f"\n[4.2] Threshold sweep on Dedicated Validation Set ({len(y_val):,} samples) ...")
-    sweep_thresholds = [0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60]
+    sweep_thresholds = THRESHOLD_CONFIG["sweep_thresholds"]
     sweep_results = []
-    best_threshold = 0.50
+    best_threshold = THRESHOLD_CONFIG["default_threshold"]
     best_val_f1 = -1.0
 
     print(f"  {'Threshold':>9} | {'Accuracy':>9} | {'Precision':>9} | {'Recall':>9} | {'F1-Score':>9} | {'Specificity':>11} | {'NPV':>9}")
@@ -449,7 +429,7 @@ def main():
     # ------------------------------------------------------------------
     # 9. Save Outputs to outputs/ directory
     # ------------------------------------------------------------------
-    outputs_dir = os.path.join(data_dir, "outputs")
+    outputs_dir = os.path.join(data_dir, OUTPUT_CONFIG["outputs_subdir"])
     os.makedirs(outputs_dir, exist_ok=True)
 
     # Git commit hash
@@ -494,7 +474,7 @@ def main():
             "git_commit": git_commit,
         }
     }
-    with open(os.path.join(outputs_dir, "metrics.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(outputs_dir, OUTPUT_CONFIG["metrics_json"]), "w", encoding="utf-8") as f:
         json.dump(metrics_json_data, f, indent=2)
 
     # confusion_matrix.csv
@@ -502,10 +482,10 @@ def main():
         "Metric": ["True Negative (TN)", "False Positive (FP)", "False Negative (FN)", "True Positive (TP)"],
         "Count": [tn, fp, fn, tp],
         "Percentage": [tn/total_cm*100, fp/total_cm*100, fn/total_cm*100, tp/total_cm*100]
-    }).to_csv(os.path.join(outputs_dir, "confusion_matrix.csv"), index=False)
+    }).to_csv(os.path.join(outputs_dir, OUTPUT_CONFIG["confusion_matrix_csv"]), index=False)
 
     # threshold_sweep.csv
-    pd.DataFrame(sweep_results).to_csv(os.path.join(outputs_dir, "threshold_sweep.csv"), index=False)
+    pd.DataFrame(sweep_results).to_csv(os.path.join(outputs_dir, OUTPUT_CONFIG["threshold_sweep_csv"]), index=False)
 
     # feature_importance_gain.csv
     pd.DataFrame({
@@ -513,21 +493,21 @@ def main():
         "Gain_Importance": [gain_importances[i] for i in sorted_gain_idx],
         "Gain_Percentage": [gain_importances[i]*100 for i in sorted_gain_idx],
         "Description": [FEATURE_DESCRIPTIONS.get(FEATURE_NAMES[i], "") for i in sorted_gain_idx]
-    }).to_csv(os.path.join(outputs_dir, "feature_importance_gain.csv"), index=False)
+    }).to_csv(os.path.join(outputs_dir, OUTPUT_CONFIG["feature_importance_gain_csv"]), index=False)
 
     # feature_importance_permutation.csv
     pd.DataFrame({
         "Feature": [FEATURE_NAMES[i] for i in perm_sorted],
         "Val_Delta_AUC": [perm_importances[i] for i in perm_sorted],
         "Description": [FEATURE_DESCRIPTIONS.get(FEATURE_NAMES[i], "") for i in perm_sorted]
-    }).to_csv(os.path.join(outputs_dir, "feature_importance_permutation.csv"), index=False)
+    }).to_csv(os.path.join(outputs_dir, OUTPUT_CONFIG["feature_importance_permutation_csv"]), index=False)
 
     # training_history.csv
     pd.DataFrame({
         "Iteration": np.arange(1, len(dev_model.full_train_loss_history_) + 1),
         "Train_Loss": dev_model.full_train_loss_history_,
         "Val_Loss": dev_model.full_val_loss_history_
-    }).to_csv(os.path.join(outputs_dir, "training_history.csv"), index=False)
+    }).to_csv(os.path.join(outputs_dir, OUTPUT_CONFIG["training_history_csv"]), index=False)
 
     # config.json: luu ca cau hinh development, refit va cac gia tri da chon
     # de co the tai lap toan bo pipeline thay vi chi tai lap model co so.
@@ -557,15 +537,15 @@ def main():
             "metadata": gs_metadata,
         },
     }
-    with open(os.path.join(outputs_dir, "config.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(outputs_dir, OUTPUT_CONFIG["config_json"]), "w", encoding="utf-8") as f:
         json.dump(config_json_data, f, indent=2)
 
     # environment.json
-    with open(os.path.join(outputs_dir, "environment.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(outputs_dir, OUTPUT_CONFIG["environment_json"]), "w", encoding="utf-8") as f:
         json.dump(metrics_json_data["environment"], f, indent=2)
 
     # evaluation_summary.txt (Báo cáo trực quan hóa, sinh động và học thuật)
-    width = 88
+    width = REPORT_CONFIG["report_width"]
 
     def _box_hdr(title):
         prefix = f"┌─ {title} "
@@ -578,7 +558,7 @@ def main():
         pad = width - len(text) - 4
         return f"│ {text}" + " " * max(0, pad) + " │"
 
-    def _make_bar(pct, bar_len=12):
+    def _make_bar(pct, bar_len=REPORT_CONFIG["bar_length"]):
         filled = int(round(float(pct) * bar_len))
         filled = max(0, min(bar_len, filled))
         return "[" + "█" * filled + "░" * (bar_len - filled) + "]"
@@ -631,11 +611,11 @@ def main():
         _box_row(" Hạng  Tên đặc trưng      Phân loại     Tỷ lệ Gain    Phân bổ trực quan   Val DeltaAUC"),
         _box_row(" ──────────────────────────────────────────────────────────────────────────────────"),
     ]
-    for r, idx in enumerate(sorted_gain_idx[:5], 1):
+    for r, idx in enumerate(sorted_gain_idx[:REPORT_CONFIG["top_n_features"]], 1):
         fn_name = FEATURE_NAMES[idx]
         g_val = gain_importances[idx]
         p_val = perm_importances[idx]
-        is_low = fn_name in ['lepton1_pT', 'lepton1_eta', 'lepton1_phi', 'lepton2_pT', 'lepton2_eta', 'lepton2_phi', 'MET_magnitude', 'MET_phi']
+        is_low = fn_name in LOW_LEVEL_FEATURES
         cat = "Low-level" if is_low else "High-level"
         bar = _make_bar(g_val, bar_len=12)
         report_lines.append(_box_row(f"#{r}   {fn_name:<18} {cat:<10}   {g_val*100:5.2f}%      {bar}      {p_val:+9.5f}"))
@@ -655,7 +635,7 @@ def main():
         _box_ftr(),
     ])
 
-    report_path = os.path.join(data_dir, "evaluation_summary.txt")
+    report_path = os.path.join(data_dir, OUTPUT_CONFIG["evaluation_summary_txt"])
     with open(report_path, "w", encoding="utf-8") as f:
         f.write("\n".join(report_lines) + "\n")
 
