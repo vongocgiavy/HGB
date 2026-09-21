@@ -433,7 +433,8 @@ class HistRegressionTree:
             return 0.0
         g_sum = np.sum(g[idx])
         h_sum = np.sum(h[idx])
-        return float(-g_sum / (h_sum + self.l2_reg))
+        denom = max(float(h_sum + self.l2_reg), 1e-12)
+        return float(-g_sum / denom)
 
     def _best_split(self, X_binned, g, h, idx):
         """
@@ -445,7 +446,8 @@ class HistRegressionTree:
         h_node = h[idx]
         G_tot = float(np.sum(g_node))
         H_tot = float(np.sum(h_node))
-        score_tot = (G_tot ** 2) / (H_tot + self.l2_reg)
+        denom_tot = max(H_tot + self.l2_reg, 1e-12)
+        score_tot = (G_tot ** 2) / denom_tot
 
         n_samples = len(idx)
         n_features = X_binned.shape[1]
@@ -479,9 +481,9 @@ class HistRegressionTree:
         if not np.any(valid):
             return None
 
-        # Tối ưu hóa tính điểm score bằng C-level broadcasting qua np.where
-        denom_L = H_L + self.l2_reg
-        denom_R = H_R + self.l2_reg
+        # Tối ưu hóa tính điểm score bằng C-level broadcasting qua np.where (bảo vệ chống chia 0)
+        denom_L = np.maximum(H_L + self.l2_reg, 1e-12)
+        denom_R = np.maximum(H_R + self.l2_reg, 1e-12)
         sc = (G_L ** 2) / denom_L + (G_R ** 2) / denom_R
         scores = np.where(valid, sc, -np.inf)
 

@@ -1,5 +1,5 @@
 Metric,Count,Percentage
-True Negative (TN),5127,42.725
-False Positive (FP),1332,11.1
-False Negative (FN),1157,9.641666666666666
-True Positive (TP),4384,36.53333333333333
+True Negative (TN),73,3.65
+False Positive (FP),1017,50.849999999999994
+False Negative (FN),33,1.6500000000000001
+True Positive (TP),877,43.85

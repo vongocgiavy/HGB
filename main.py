@@ -29,6 +29,7 @@ from hgb_model import (
     compute_roc_curve,
     CustomGridSearchCV,
 )
+from weights import export_weights_to_json
 
 # ==============================================================================
 # FEATURE DEFINITIONS (SUSY dataset, Baldi et al. 2014, UCI doi:10.24432/C54606)
@@ -563,6 +564,18 @@ def main():
     # environment.json
     with open(os.path.join(outputs_dir, "environment.json"), "w", encoding="utf-8") as f:
         json.dump(metrics_json_data["environment"], f, indent=2)
+
+    # best_model_weights.json
+    weights_dir = os.path.join(data_dir, "weights")
+    os.makedirs(weights_dir, exist_ok=True)
+    export_weights_to_json(
+        final_model,
+        os.path.join(weights_dir, "best_model_weights.json"),
+        feature_names=FEATURE_NAMES,
+        optimal_threshold=best_threshold,
+        metrics=metrics_json_data["metrics"],
+        model_type="best_model"
+    )
 
     # evaluation_summary.txt (Báo cáo trực quan hóa, sinh động và học thuật)
     width = 88

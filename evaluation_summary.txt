@@ -1,0 +1,61 @@
+========================================================================================
+   BÁO CÁO NGHIỆM THU: PHÂN LOẠI BIẾN CỐ VA CHẠM HẠT SIÊU ĐỐI XỨNG (SUSY)
+   Thuật toán: Histogram Gradient Boosting (100% Thuần Python/NumPy - Zero Sklearn)
+========================================================================================
+
+┌─ [1] SƠ ĐỒ PHÂN BỔ DỮ LIỆU & KIỂM TOÁN CÁCH LY (ZERO DATA LEAKAGE) ──────────────────┐
+│ Quy mô dữ liệu : 10,000 mẫu (18 đặc trưng liên tục) | Nhãn: nhị phân {0, 1}          │
+│                                                                                      │
+│   TẬP HUẤN LUYỆN (TRAIN): 8,000 mẫu (80.0%)       TẬP KIỂM THỬ (TEST): 2,000 mẫu     │
+│   ├── Fit-Train (90%): 7,200 mẫu (Dựng cây/g,h)    │   (20.0% - Độc lập 100%,        │
+│   └── Validation (10%): 800 mẫu (Early Stop/tau*) │    khóa chặt đến Phase 3)        │
+│                                                                                      │
+│   Kiểm toán dữ liệu: 0 NaN | 0 Inf | 0 Index Overlap | Trạng thái: [✓ 14/14 PASSED]  │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ [2] KẾT QUẢ ĐÁNH GIÁ TRÊN TẬP TEST ĐỘC LẬP (TẠI NGƯỠNG KHÓA tau* = 0.35) ───────────┐
+│                                                                                      │
+│  Chỉ số             Giá trị       Trực quan hóa        Ý nghĩa Học thuật & Vật lý    │
+│  ──────────────────────────────────────────────────────────────────────────────────  │
+│  Accuracy            47.50%   [██████░░░░░░] 47.5%   Tỷ lệ phân loại đúng toàn cục   │
+│  Precision (PPV)     46.30%   [██████░░░░░░] 46.3%   Độ tin cậy khi báo hiệu SUSY    │
+│  Recall (TPR)        96.37%   [████████████] 96.4%   Hiệu suất phát hiện hạt thực    │
+│  Specificity (TNR)    6.70%   [█░░░░░░░░░░░]  6.7%   Khả năng lọc sạch nền tạp âm    │
+│  NPV                 68.87%   [████████░░░░] 68.9%   Độ tin cậy khi dự đoán là nền   │
+│  F1-Score            62.55%   [████████░░░░] 62.6%   Trung bình điều hòa Prec & Rec  │
+│  ROC-AUC            0.6094    [███████░░░░░] 60.9%   Năng lực phân biệt độc lập tau  │
+│                                                                                      │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ [3] MA TRẬN NHẦM LẪN CHI TIẾT (CONFUSION MATRIX TRÊN TẬP TEST) ─────────────────────┐
+│                                                                                      │
+│                       Dự báo: NỀN (0)               Dự báo: HẠT SUSY (1)             │
+│  Thực tế: NỀN (0)     TN =    73 ( 3.6%) [Đúng nền]    FP = 1,017 (50.8%) [Báo động giả] │
+│  Thực tế: SUSY (1)    FN =    33 ( 1.7%) [Bỏ sót]      TP =   877 (43.9%) [Bắt đúng hạt] │
+│                                                                                      │
+│  • Tỷ lệ báo động giả (False Positive Rate - FPR): 93.30%                            │
+│  • Tỷ lệ bỏ sót hạt   (False Negative Rate - FNR):  3.63%                            │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ [4] TOP ĐẶC TRƯNG DẪN DẮT QUYẾT ĐỊNH (FEATURE IMPORTANCES) ─────────────────────────┐
+│                                                                                      │
+│  Hạng  Tên đặc trưng      Phân loại     Tỷ lệ Gain    Phân bổ trực quan   Val DeltaAUC │
+│  ──────────────────────────────────────────────────────────────────────────────────  │
+│ #1   MET_magnitude      Low-level    34.42%      [████░░░░░░░░]       +0.06165       │
+│ #2   lepton1_pT         Low-level    18.81%      [██░░░░░░░░░░]       +0.00566       │
+│ #3   M_R                High-level   14.66%      [██░░░░░░░░░░]       +0.02979       │
+│ #4   lepton2_pT         Low-level     6.00%      [█░░░░░░░░░░░]       +0.00336       │
+│ #5   dPhi_r_b           High-level    3.06%      [░░░░░░░░░░░░]       +0.00178       │
+│                                                                                      │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ [5] THÔNG SỐ HUẤN LUYỆN & MÔI TRƯỜNG THỰC THI ──────────────────────────────────────┐
+│                                                                                      │
+│ • Cấu hình HGB       : 30 trees max | depth=6 | min_leaf=20 | L2=1.0 | bins=255      │
+│ • Cơ chế Dừng sớm    : Dừng tại cây 30, Best Iteration = 10 (Val Loss = 0.66409)     │
+│ • Thời gian Train    : Phase 1 Dev = 0.49s | Phase 2 Full Refit (8,000 mẫu) = 0.17s  │
+│ • Khóa ngưỡng tau*   : tau* = 0.35 (Quét độc lập theo max F1 trên Validation Set)    │
+│ • Môi trường runtime : Python 3.11.9 | NumPy 2.4.4 | Pandas 3.0.5                    │
+│ • Phiên bản Git      : 7ab452d9dc4c1f56b09b5518658c80f2781e58e0                      │
+│                                                                                      │
+└──────────────────────────────────────────────────────────────────────────────────────┘

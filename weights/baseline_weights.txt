@@ -1,0 +1,124 @@
+======================================================================================
+   BÁO CÁO TOÀN DIỆN TRỌNG SỐ MÔ HÌNH HGB (BASELINE_WEIGHTS)
+   Dự án: Phân loại biến cố va chạm hạt SUSY (UCI Benchmark)
+   Triển khai: 100% Python thuần và NumPy (Zero Scikit-Learn)
+======================================================================================
+
+1. THÔNG TIN SIÊU THAM SỐ & ĐỘ PHÂN GIẢI
+--------------------------------------------------------------------------------------
+  • Loại mô hình             : baseline
+  • Số cây quyết định        : 30 cây (n_estimators=30)
+  • Tốc độ học (shrinkage)   : 0.1
+  • Hệ số chính quy L2       : 1.0
+  • Độ sâu tối đa mỗi cây    : 5
+  • Số mẫu tối thiểu nút lá  : 20
+  • Số bin lượng tử hóa max  : 255
+  • Điểm khởi tạo log-odds   : -0.180488
+  • Xác suất tiên nghiệm     : 0.4550
+  • Ngưỡng phân loại tối ưu  : tau* = 0.50
+  • Thời điểm xuất file      : 2026-09-21 16:40:12
+
+2. CHỈ SỐ ĐÁNH GIÁ TRÊN TẬP KIỂM THỬ (TEST SET)
+--------------------------------------------------------------------------------------
+  • Accuracy (Độ chính xác)     :  60.05%
+  • Precision (Độ chuẩn xác)    :  58.74%
+  • Recall (Độ nhạy - TPR)      :  40.99%
+  • Specificity (Độ đặc hiệu)   :  75.96%
+  • NPV (Giá trị dự đoán âm)    :  60.66%
+  • F1-Score                    :  48.28%
+  • ROC-AUC                     : 0.6110
+
+3. BẢNG TẦM QUAN TRỌNG ĐẶC TRƯNG (FEATURE IMPORTANCES - GAIN)
+--------------------------------------------------------------------------------------
+  Hạng  | Tên đặc trưng      | Tỷ lệ Gain | Mô tả đặc trưng
+--------------------------------------------------------------------------------------
+  #1    | MET_magnitude      |     29.06% | Missing Transverse Energy magnitude [Low-level]
+  #2    | lepton1_pT         |     16.38% | Transverse momentum lepton 1 [Low-level]
+  #3    | M_R                |     13.10% | Razor mass M_R [High-level]
+  #4    | lepton2_pT         |      5.00% | Transverse momentum lepton 2 [Low-level]
+  #5    | MT2                |      3.53% | Stransverse mass MT2 [High-level]
+  #6    | S_R                |      3.43% | Super-razor variable S_R [High-level]
+  #7    | dPhi_r_b           |      3.28% | Azimuthal angle dPhi_r_b [High-level]
+  #8    | MET_rel            |      3.24% | MET relative to nearest jet [High-level]
+  #9    | lepton2_eta        |      3.15% | Pseudorapidity lepton 2 [Low-level]
+  #10   | axial_MET          |      2.88% | Axial Missing ET [High-level]
+  #11   | MET_phi            |      2.66% | MET azimuthal angle [Low-level]
+  #12   | M_TR_2             |      2.65% | Transverse razor mass M_TR_2 [High-level]
+  #13   | lepton2_phi        |      2.61% | Azimuthal angle lepton 2 [Low-level]
+  #14   | lepton1_eta        |      2.24% | Pseudorapidity lepton 1 [Low-level]
+  #15   | lepton1_phi        |      2.17% | Azimuthal angle lepton 1 [Low-level]
+  #16   | cos_theta_r1       |      1.90% | cos(theta_r1) Razor frame decay angle [High-level]
+  #17   | R                  |      1.69% | Razor ratio R [High-level]
+  #18   | M_Delta_R          |      1.02% | Super-razor M_Delta_R [High-level]
+
+4. BẢNG LƯỢNG TỬ HÓA BIN (QUANTIZATION BINS PER FEATURE)
+--------------------------------------------------------------------------------------
+  #   | Đặc trưng          |   Số bin |   Ngưỡng Min |   Ngưỡng Max
+--------------------------------------------------------------------------------------
+  1   | lepton1_pT         |      255 |       0.0057 |       3.8333
+  2   | lepton1_eta        |      255 |      -2.6874 |       2.5968
+  3   | lepton1_phi        |      255 |      -2.6924 |       2.6294
+  4   | lepton2_pT         |      255 |      -2.5645 |       2.7523
+  5   | lepton2_eta        |      255 |      -2.6269 |       2.6160
+  6   | lepton2_phi        |      255 |      -2.6855 |       2.6301
+  7   | MET_magnitude      |      255 |       0.0081 |       5.0965
+  8   | MET_phi            |      255 |      -2.7378 |       2.6689
+  9   | MET_rel            |      255 |      -2.7339 |       2.6725
+  10  | axial_MET          |      255 |      -2.5999 |       2.6333
+  11  | M_R                |      255 |       0.0080 |       4.1910
+  12  | M_TR_2             |      255 |      -2.6434 |       2.7217
+  13  | R                  |      255 |      -2.6237 |       2.6118
+  14  | MT2                |      255 |      -2.5545 |       2.7190
+  15  | S_R                |      255 |      -2.7326 |       2.6269
+  16  | M_Delta_R          |      255 |      -2.6856 |       2.6075
+  17  | dPhi_r_b           |      255 |      -2.6975 |       2.6620
+  18  | cos_theta_r1       |      255 |      -2.5591 |       2.6258
+
+5. THỐNG KÊ PHÂN BỔ TRỌNG SỐ LÁ (LEAF WEIGHTS DISTRIBUTION)
+--------------------------------------------------------------------------------------
+  • Tổng số nút trong rừng cây : 1,406 nút
+  • Tổng số nút lá (leaves)    : 718 lá
+  • Trọng số lá nhỏ nhất (Min) : -1.544490
+  • Trọng số lá lớn nhất (Max) : 1.896792
+  • Trọng số lá trung bình     : 0.169535
+  • Độ lệch chuẩn trọng số lá  : 0.637030
+
+6. CẤU TRÚC MẪU CỦA CÁC CÂY QUYẾT ĐỊNH BAN ĐẦU
+--------------------------------------------------------------------------------------
+  --- CÂY QUYẾT ĐỊNH #1 ---
+  ROOT: SPLIT MET_magnitude (bin <= 225) | gain=108.7227
+  ├── [L] SPLIT lepton1_pT (bin <= 223) | gain=51.0273
+  │   ├── [L] SPLIT M_R (bin <= 220) | gain=45.3497
+  │   │   ├── [L] SPLIT MET_magnitude (bin <= 156) | gain=27.6547
+  │   │   └── [R] SPLIT lepton2_pT (bin <= 7) | gain=5.4195
+  │   └── [R] SPLIT M_R (bin <= 102) | gain=10.3292
+  │       ├── [L] SPLIT lepton1_pT (bin <= 250) | gain=8.4652
+  │       └── [R] SPLIT MET_magnitude (bin <= 146) | gain=6.5239
+  └── [R] SPLIT MET_magnitude (bin <= 249) | gain=6.8692
+      ├── [L] SPLIT lepton1_pT (bin <= 21) | gain=6.2824
+      │   ├── [L] SPLIT MET_rel (bin <= 96) | gain=2.7794
+      │   └── [R] SPLIT M_R (bin <= 109) | gain=5.8506
+      └── [R] SPLIT lepton1_pT (bin <= 127) | gain=3.4494
+          ├── [L] SPLIT MET_rel (bin <= 200) | gain=3.9696
+          └── [R] LEAF weight = +1.89679
+
+  --- CÂY QUYẾT ĐỊNH #2 ---
+  ROOT: SPLIT MET_magnitude (bin <= 228) | gain=88.2959
+  ├── [L] SPLIT lepton1_pT (bin <= 183) | gain=44.1296
+  │   ├── [L] SPLIT M_R (bin <= 220) | gain=28.4107
+  │   │   ├── [L] SPLIT MET_magnitude (bin <= 156) | gain=18.9249
+  │   │   └── [R] SPLIT dPhi_r_b (bin <= 233) | gain=4.2075
+  │   └── [R] SPLIT M_R (bin <= 176) | gain=15.3669
+  │       ├── [L] SPLIT MET_magnitude (bin <= 184) | gain=11.4391
+  │       └── [R] SPLIT lepton2_pT (bin <= 80) | gain=4.7030
+  └── [R] SPLIT MET_magnitude (bin <= 249) | gain=4.5516
+      ├── [L] SPLIT cos_theta_r1 (bin <= 239) | gain=4.0846
+      │   ├── [L] SPLIT lepton1_pT (bin <= 22) | gain=4.8215
+      │   └── [R] SPLIT M_TR_2 (bin <= 96) | gain=3.6279
+      └── [R] SPLIT lepton1_pT (bin <= 127) | gain=2.7169
+          ├── [L] SPLIT MET_rel (bin <= 200) | gain=3.2616
+          └── [R] LEAF weight = +1.70213
+
+======================================================================================
+   KẾT THÚC BÁO CÁO TRỌNG SỐ
+======================================================================================

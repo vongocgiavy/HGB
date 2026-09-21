@@ -110,26 +110,26 @@ Problem Definition ──> Domain Understanding ──> Data Cleaning ──> Fe
 | STT | Tên bước chuẩn hóa | Nội dung triển khai trong dự án |
 | :---: | :--- | :--- |
 | **1** | **Xác định bài toán (Problem Definition)** | Phân loại sự kiện va chạm hạt SUSY tín hiệu ($y=1$) vs Nền chuẩn SM ($y=0$), 18 biến đầu vào. |
-| **2** | **Xác định bản chất bài toán ML** | Supervised Binary Classification trên Tabular Data, Offline Batch Training, Sub-millisecond Inference. |
-| **3** | **Khảo sát lĩnh vực & không gian dữ liệu** | Phân tích tri thức HEP: 8 biến động học cơ bản (Lepton $p_T, \eta, \phi$, $\text{MET}$) và 10 biến Razor bất biến khối lượng. |
-| **4** | **Khám phá và xử lý dữ liệu (EDA & Cleaning)** | Kiểm toán 0 NaN, 0 Inf, kiểm tra trùng lặp và xác nhận tỷ lệ lớp cân bằng tự nhiên (~45.8% vs 54.2%). |
-| **5** | **Chuẩn hóa đặc trưng (Feature Scaling)** | Phân tích tính chất Scale-invariant của cây; ứng dụng Quantile Binning (`HistBinMapper` 255 bins uint8). |
-| **6** | **Xử lý biến phân loại (Categorical Data)** | Kiểm tra kiểu dữ liệu: 100% đặc trưng là số thực liên tục (`float32`), không cần One-Hot Encoding. |
-| **7** | **Lựa chọn thuật toán & hàm mất mát** | Histogram Gradient Boosting tối ưu $O(D \cdot K)$, hàm mất mát Log-Loss, Gradient/Hessian bậc 2 và $L_2$ regularization. |
-| **8** | **Kỹ thuật tạo đặc trưng (Feature Engineering)** | Khảo sát tương tác vật lý: tỷ số $p_T$, chênh lệch góc mở $\Delta \phi$, tổng năng lượng vô hướng $H_T$. |
-| **9** | **Chia dữ liệu & kiểm soát Data Leakage** | Kiểm toán giao thoa chỉ mục (0 Overlap), độc lập tuyệt đối giữa Train, Validation và Test. |
-| **10** | **Lựa chọn phương pháp chia dữ liệu** | Áp dụng Stratified Split bảo toàn phân phối nhãn I.I.D trên cả Train (80%) và Test (20%). |
-| **11** | **Xây dựng mô hình cơ sở (Baseline Model)** | Thiết lập Dummy Majority Baseline (ROC-AUC=0.5) và Logistic Regression Baseline thuần NumPy (~0.78 ROC-AUC). |
-| **12** | **Nguyên lý No Free Lunch** | Biện minh khoa học: HGB vượt trội Linear về phi tuyến và vượt trội DNN về tốc độ/tài nguyên trên dữ liệu bảng. |
-| **13** | **Phân tích Bias và Variance** | Khảo sát đánh đổi Underfitting vs Overfitting; kiểm soát qua độ sâu cây (`max_depth=6`), $L_2$ penalty và Early Stopping. |
-| **14** | **Lựa chọn & đánh giá Evaluation Metrics** | Đo lường toàn diện ROC-AUC, PR-AUC, F1; thuật toán quét ngưỡng (Threshold Tuning) trên Validation để khóa $T^*$. |
-| **15** | **Kiểm định chéo K-fold (Cross-Validation)** | `StratifiedKFold` ($K=3$) và `cross_val_score` thuần NumPy đánh giá độ ổn định $\mu \pm \sigma$. |
-| **16** | **Tối ưu siêu tham số (Tuning)** | `CustomGridSearchCV` thuần NumPy tìm kiếm bộ tham số tối ưu và ứng dụng Early Stopping tiết kiệm tính toán. |
-| **17** | **Thực nghiệm huấn luyện mô hình** | Bảng nhật ký thực nghiệm đa cấu hình; Quy trình 2-Phase (Phase 1 Dev tìm `best_n_iter` -> Phase 2 Full Refit -> Phase 3 Test). |
-| **18** | **Kiểm định thống kê độ tin cậy** | Bootstrapping 1,000 lần ước lượng Khoảng tin cậy 95% CI; chứng minh HGB vượt trội có ý nghĩa so với Baseline ($p < 0.001$). |
-| **19** | **Phân tích lỗi (Error Analysis)** | Bóc tách ma trận nhầm lẫn: phân tích False Positives, False Negatives và mẫu ranh giới không chắc chắn ($p \approx 0.5$). |
-| **20** | **Khả năng giải thích mô hình (Interpretability)** | Trực quan hóa Split Gain Importance và Permutation Importance; xác nhận biến `MET_magnitude` dẫn đầu độ quan trọng. |
-| **21** | **Chu trình lặp cải tiến mô hình** | Thiết lập vòng lặp phản hồi cải tiến liên tục: Đánh giá $\to$ Phân tích lỗi $\to$ Feature $\to$ Tối ưu $\to$ Triển khai. |
+| **2** | **Xác định bản chất của bài toán Machine Learning** | Supervised Binary Classification trên Tabular Data, Offline Batch Training, Sub-millisecond Inference. |
+| **3** | **Khảo sát lĩnh vực và không gian dữ liệu** | Phân tích tri thức HEP: 8 biến động học cơ bản (Lepton $p_T, \eta, \phi$, $\text{MET}$) và 10 biến Razor bất biến khối lượng. |
+| **4** | **Khám phá và xử lý dữ liệu (Data Exploration & Cleaning)** | Kiểm toán 0 NaN, 0 Inf, 0 Duplicates, kiểm tra ràng buộc vật lý và tỷ lệ lớp cân bằng tự nhiên. |
+| **5** | **Chuẩn hóa đặc trưng (Feature Scaling & Scale Invariance)** | Phân tích tính chất Scale-invariant của cây; ứng dụng Quantile Binning (`HistBinMapper` 255 bins uint8) tiết kiệm 75% RAM. |
+| **6** | **Xử lý biến phân loại (Categorical Data & Encoding)** | Kiểm tra kiểu dữ liệu: 100% đặc trưng là số thực liên tục (`float32`), Cardinality cao, không cần One-Hot Encoding. |
+| **7** | **Lựa chọn thuật toán, hàm mục tiêu và hệ số phạt phù hợp (Algorithm, Objective & Penalty Factor)** | Histogram Gradient Boosting tối ưu $O(D \cdot K)$, hàm mất mát Log-Loss, Gradient/Hessian bậc 2 và $L_2$ regularization $\lambda$. |
+| **8** | **Kỹ thuật tạo đặc trưng và điều khiển số chiều (Feature Engineering & Dimensionality)** | Tạo 3 biến tương tác vật lý ($H_T, p_T\text{-ratio}, \Delta\phi$) và kiểm soát số chiều bằng SVD/PCA Scree Plot. |
+| **9** | **Phân hoạch dữ liệu và kiểm soát rò rỉ thông tin (Data Splitting & Leakage Control)** | Phân chia Train 80% / Test 20%, kiểm toán giao thoa chỉ mục (0 Overlap) đảm bảo Zero Data Leakage tuyệt đối. |
+| **10** | **Chiến lược phân tách tập mẫu (Data Splitting Strategy)** | Áp dụng Stratified Split bảo toàn phân phối nhãn I.I.D trên cả Train và Test, độ lệch tỷ lệ nhãn bằng 0. |
+| **11** | **Xây dựng mô hình tham chiếu cơ sở (Baseline Model)** | Thiết lập Dummy Majority Baseline (ROC-AUC=0.5) và Logistic Regression Baseline thuần NumPy (~0.78 ROC-AUC). |
+| **12** | **Phân tích định lý No Free Lunch và miền giả thuyết (No Free Lunch Theorem)** | Khảo sát thực nghiệm chứng minh HGB vượt trội Linear về phi tuyến và vượt trội DNN về tốc độ/tài nguyên trên dữ liệu bảng. |
+| **13** | **Phân tích cân bằng độ lệch và phương sai (Bias-Variance Tradeoff)** | Khảo sát đánh đổi Underfitting vs Overfitting; kiểm soát qua độ sâu cây (`max_depth=5`), $L_2$ penalty và Early Stopping. |
+| **14** | **Khảo sát và tối ưu hóa siêu tham số (Hyperparameter Tuning)** | `CustomGridSearchCV` thuần NumPy tìm kiếm bộ tham số tối ưu (`learning_rate`, `max_depth`, `min_samples_leaf`) qua 3-Fold CV. |
+| **15** | **Hệ thống chỉ số, hệ số phạt rủi ro và ngưỡng đánh giá không giám sát (Evaluation Metrics & Cost Penalty Thresholds)** | Đo lường toàn diện ROC-AUC, PR-AUC, F1; áp dụng ma trận phạt rủi ro ($C_{FN}=3, C_{FP}=1$), quét ngưỡng tìm $\tau^*$ và đo độ phân tách không giám sát. |
+| **16** | **Kiểm định chéo không giám sát (Unsupervised K-Fold Cross-Validation)** | `StratifiedKFold` ($K=3$) đánh giá độ ổn định $\mu \pm \sigma$ và kiểm định tính bất biến phân phối không giám sát giữa các fold. |
+| **17** | **Thực nghiệm huấn luyện và suy luận mô hình (Model Training & Inference)** | Quy trình 2-Phase chuẩn công nghiệp: Phase 1 Dev tìm `best_n_iter` -> Phase 2 Full Refit trên 100% Train -> Benchmark độ trễ suy luận. |
+| **18** | **Kiểm định thống kê và ý nghĩa kết quả (Statistical Significance & Hypothesis Testing)** | Bootstrapping 1,000 lần ước lượng 95% CI; kiểm định giả thuyết chứng minh HGB vượt trội có ý nghĩa thống kê ($p < 0.001$). |
+| **19** | **Phân tích vùng biên quyết định và rủi ro phân loại (Error Analysis & Borderline Cases)** | Bóc tách ma trận nhầm lẫn; phân tích các ca ranh giới không chắc chắn ($p \approx \tau^* \pm 0.05$) và nguyên nhân gốc rễ dẫn đến lỗi. |
+| **20** | **Khả năng giải thích mô hình và chẩn đoán nguyên nhân gốc rễ (Model Interpretability & Root Cause Analysis)** | Trực quan hóa Split Gain Importance và Permutation Importance; xác nhận biến `MET_magnitude` dẫn đầu độ quan trọng. |
+| **21** | **Chu trình phát triển lặp và triển khai giám sát (Iterative Development & Deployment)** | Vòng lặp cải tiến Iteration 2 (tích hợp Feature Engineering); thiết lập hệ thống giám sát trôi dạt dữ liệu PSI trong vận hành thực tế. |
 
 ---
 
